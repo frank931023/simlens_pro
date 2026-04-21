@@ -1,0 +1,714 @@
+License: arXiv.org perpetual non-exclusive license
+arXiv:2406.02991v1 [cs.CV] 05 Jun 2024
+A Human-Annotated Video Dataset for Training and Evaluation of 360-Degree Video Summarization Methods † †
+Ioannis Kontostathis, Evlampios Apostolidis, Vasileios Mezaris
+Information Technologies Institute (ITI), Centre for Research and Technology, Hellas (CERTH) Thessaloniki, Greece {ioankont, apostolid, bmezaris}@iti.gr
+Abstract
+In this paper we introduce a new dataset for 360-degree video summarization: the transformation of 360-degree video content to concise 2D-video summaries that can be consumed via traditional devices, such as TV sets and smartphones. The dataset includes ground-truth human-generated summaries, that can be used for training and objectively evaluating 360-degree video summarization methods. Using this dataset, we train and assess two state-of-the-art summarization methods that were originally proposed for 2D-video summarization, to serve as a baseline for future comparisons with summarization methods that are specifically tailored to 360-degree video. Finally, we present an interactive tool that was developed to facilitate the data annotation process and can assist other annotation activities that rely on video fragment selection.
+
+Keywords Benchmarking dataset  
+⋅
+ 360-degrees video  
+⋅
+ Video summarization  
+⋅
+ Annotation tool
+
+1Introduction
+Nowadays, there is an increasing interest in the production and distribution of 
+360
+∘
+ video content, in order to offer a more comprehensive and immersive viewing experience to the users. This interest is supported by the existence of advanced 
+360
+∘
+ video recording devices (e.g., GoPro and Insta360) and the compatibility of the most popular social networks and video sharing platforms with this type of video content. Currently, the consumption of 
+360
+∘
+ videos is being made primarily using VR headsets (e.g., Oculus Rift and Gear VR). Nevertheless, transforming 
+360
+∘
+ videos to concise 2D-video summaries that can be viewed via traditional devices, such as TV sets and smartphones, would: i) enable repurposing, ii) increase consumption (through additional devices), iii) and facilitate browsing and retrieval of 
+360
+∘
+ video content. This observation indicates a strong need for technologies that could support the summarization of 
+360
+∘
+ videos, and highlights the importance of these technologies in the modern video content production and consumption ecosystem.
+
+As reported in [1], currently, the research focuses mainly on methods for navigating the viewer through the unlimited field of view of the 
+360
+∘
+ video, by controlling the camera’s position and field of view, and generating an optimal camera trajectory [2, 3, 4, 5, 6, 7]. The output is a normal Field-Of-View (NFOV) video that has the same duration with the 
+360
+∘
+ video, and thus cannot be seen as a summary of the video content. Only a few recent works deal with the summarization of 
+360
+∘
+ videos [8, 9, 1]. Nevertheless, the methods in [8, 9] assume the existence of a single important activity or narrative in the 
+360
+∘
+ video and target the creation of a video highlight [8] or a story-based video summary [9], respectively. In terms of data, the majority of the used datasets in these works [2, 4, 10, 11] can assist the training of network architectures for NFOV selection and saliency prediction, and thus can support the development of methods for 
+360
+∘
+ video summarization, only partially. Moreover, the used datasets in works for 
+360
+∘
+ video highlight detection [8] and story-based summarization [9] (which are more closely related with the summarization task) are not publicly-available. Finally, due to lack of ground-truth data for 
+360
+∘
+ video summarization, the performance of the method from [1] was evaluated only based on qualitative analysis.
+
+To assist research on 
+360
+∘
+ video summarization, in this paper we introduce a new dataset, called 360-VSumm, that contains diverse visual content from different topics (music shows, sports games, short movies, documentaries) captured under various conditions (indoor, outdoor) using a static or moving camera. 360-VSumm contains ground-truth annotations about the parts of the 
+360
+∘
+ video that should be included in the summary (differently from [2, 4, 10, 11]). Moreover, the included videos might contain multiple events that overlap in time or run in parallel; thus, the created 360-VSumm dataset is not tailored to specific summarization scenarios (contrary to [8, 9]) and can assist the development of generic 
+360
+∘
+ video summarization methods. Our main contributions are as follows:
+
+• We introduce the 360-VSumm dataset for 
+360
+∘
+ video summarization. This dataset includes ground-truth human-generated summaries, which can be used for training and objectively evaluating 
+360
+∘
+ video summarization methods.
+• We use 360-VSumm to train and evaluate two state-of-the-art summarization methods that were originally proposed for 2D-video summarization, to serve as a baseline for future comparisons with summarization methods that are specifically tailored to 
+360
+∘
+ video.
+• We develop an interactive tool for annotating videos by selecting their most appropriate parts for inclusion in the video summary, which can be used for annotation tasks that rely on video fragment selection (e.g., to create ground-truth data for video highlight detection and video abnormal event detection).
+2Literature Review
+As discussed in [1], the task of creating a natural-looking NFOV video that summarizes the interesting events of a 
+360
+∘
+ video, has been studied only to a small extent using datasets that are tailored to the needs of specific NFOV or summary video production scenarios. Su et al. developed methods for extracting a singular NFOV video from a panoramic 
+360
+∘
+ video [2, 3]. In both of these works, Su et al. used the Pano2Vid dataset that was created by collecting 
+86
+ 
+360
+∘
+ videos from YouTube using specific keywords such as “Hiking”, “Mountain Climbing”, “Parade” and “Soccer”. A subset of these videos (
+20
+ in total) was annotated by three different annotators with human-edited NFOV camera trajectories (two per video), and the obtained annotations were used as ground-truth for evaluating the performance of the developed methods. Hu et al. [4] proposed a method for piloting the viewer in the 
+360
+∘
+ video by detecting its most interesting parts. To evaluate their method, Hu et al. collected a new dataset, called Sports-360, by downloading from YouTube 
+342
+ 
+360
+∘
+ videos showing five sports activities (namely, basketball, parkour, BMX, skateboarding, and dance), and asking three annotators to label the most salient object for VR viewers in frames containing human-identifiable objects. Qiao et al. [5], presented a method for predicting viewport-dependent saliency over 
+360
+∘
+ videos based on both video content and viewport location. In terms of training and evaluation, they used the PVS-HM dataset from [10] and the VR-EyeTracking dataset from [11]. The former contains 
+76
+ panoramic video sequences of diverse content (e.g., driving, sports, movies, video games) along with data about the head movement and the eye fixation of 
+58
+ humans. The latter is composed of 
+208
+ 
+360
+∘
+ videos of various content (e.g., indoor scene, outdoor activities, music shows, sports games, documentation, short movies) that were annotated with the help of 
+30
+ humans in terms of eye fixation. Yu et al. [8] proposed a framework for 
+360
+∘
+ video highlight detection, that finds out the best NFOV subshot per 
+360
+∘
+ video segment and selects the N top-ranked NFOV subshots as highlights. The evaluation of this framework was based on the Pano2vid dataset and a new 
+360
+∘
+ video highlight dataset, which was formed after collecting 
+2406
+ NFOV and 
+115
+ 
+360
+∘
+ wedding and music videos from YouTube and Vimeo. As ground-truth data, Yu et al. used the annotations (
+15
+ most salient 5-sec. NFOV video clips) of three annotators on 
+25
+ randomly-selected 
+360
+∘
+ videos from each category. Nevertheless, the created dataset was not released in public. Lee et al. [9] described an approach for story-based summarization of 
+360
+∘
+ videos. This approach identifies NFOV region proposals using a deep ranking network and performs temporal summarization based on a memory network and the assumption that the parts of a story-based summary share a common story-line. The NFOV selection part was evaluated using Pano2Vid dataset, while the temporal summarization part was assessed using a newly collected 
+360
+∘
+ video dataset. This dataset comprises of 
+285
+ 
+360
+∘
+ videos and 
+9138
+ photostreams showing five different topics (namely “wedding”, “parade”, “rowing”, “scuba diving” and “air ballooning”). These data are used in an unsupervised training setting in order to learn transitions between the subshots of a summary, so as to recover the latent storyline and summarize the full-length video. For evaluation, Lee et al. randomly sampled 
+10
+ 
+360
+∘
+ videos per topic as a test set and obtained three ground-truth summaries per video from human annotators, given that the generated summary does not exceed the 
+15
+%
+ of the full-length video’s duration. However, the used dataset was not made publicly-available. Kang et al. [6] presented an interactive 
+360
+∘
+ video navigation system, which defines a virtual camera path based on the most salient events in the video and generates a NFOV video. The performance of this system was evaluated with the help of the Pano2Vid [2] and Sports-360 [4] datasets. Focusing on a similar task, Wang et al. [7] developed a tool for 
+360
+∘
+ video navigation and playback on 2D displays, and assessed its performance using the same datasets. Finally, in our previous work [1], we proposed an integrated system for spatio-temporal summarization of 
+360
+∘
+ videos. This system detects salient events in the 
+360
+∘
+ video using two state-of-the-art methods from the literature (ATSal [12] and SST-Sal [13]), creates a conventional 2D-video that contains these events, and produces a summary of this video using a saliency-aware variant of an unsupervised state-of-the-art video summarization method (CA-SUM [14]). For the training and evaluation of the 
+360
+∘
+ video saliency detection component, we used the VR-EyeTracking and Sports-360 datasets. The training of the video summarization component was based on a set of 
+100
+ 2D-videos that were produced and scored in terms of frame-level saliency using the integrated mechanism for salient event detection and 2D-video production, while its assessment was based on qualitative analysis.
+
+The aforementioned details about the used datasets in the relevant literature are summarized in Table 1. As can be seen, most of these datasets [2, 4, 10, 11] can be used to train network architectures for NFOV selection and saliency prediction, in order to support the creation of NFOV videos from 
+360
+∘
+ videos [2, 3], the navigation of the viewer in the content of 
+360
+∘
+ videos [4, 6, 7], and the prediction of viewport-dependent 
+360
+∘
+ video saliency [5]. These datasets can assist only partially the development of methods for 
+360
+∘
+ video highlight detection [8] or summarization [9, 1], since they can be used only for specific parts of the processing pipeline, that relate to NFOV selection or saliency prediction. Only a couple of datasets are suitable for training networks that create a more concise version of the content of the full-length 
+360
+∘
+ video [8, 9]. However, both of them were formed based on the assumption that there is only one important activity or narrative in the 
+360
+∘
+ video, and thus can be used only for building methods for 
+360
+∘
+ video highlight detection [8] or story-based summarization [9]. Moreover, none of these datasets is publicly-available.
+
+In this paper we introduce a new dataset, called 360-VSumm, that can assist research on 
+360
+∘
+ video summarization. 360-VSumm is based on the VR-EyeTracking dataset [11] and thus it comprises of diverse visual content from different topics (music shows, sports games, short movies, documentaries) that has been captured under various conditions (indoor, outdoor) using a static or moving camera. Differently from [2, 4, 10, 11], our dataset contains ground-truth annotations about the parts of the 
+360
+∘
+ video that should be included in the summary. Moreover, contrary to [8, 9], the videos in our dataset might contain multiple events that overlap in time or run in parallel and should be all taken into account during the summarization process. So, 360-VSumm is not restricted to specific rules about the content of the 
+360
+∘
+ video, and thus can assist the development of more generic 
+360
+∘
+ video summarization methods.
+
+Table 1:Overview of the used datasets in the relevant literature.
+Dataset	 
+Number and
+type of videos
+ 	Visual content	Ground-truth annotations	Supported task(s)	Availability
+Pano2Vid [2]	
+86
+ 
+360
+∘
+ videos	 
+Hiking, Parade,
+Soccer, Mountain
+Climbing
+Human-edited NFOV
+camera trajectories
+- NFOV video creation
+from 
+360
+∘
+ videos [2, 3] 
+ 	Public
+- 
+360
+∘
+ video highlight detection [8] 
+(used to evaluate NFOV selection)
+  
+- Story-based 
+360
+∘
+ video summarization [9] 
+(used to evaluate NFOV selection)
+  
+- 
+360
+∘
+ video viewer navigation [6, 7] 
+Sports-360 [4]	
+342
+ 
+360
+∘
+ videos	 
+Basketball, BMX,
+Dance, Parkour,
+Skateboarding
+Labels about the most
+salient object in frames
+with human-identifiable
+objects
+- 
+360
+∘
+ video viewer navigation [4, 6, 7]	Public
+- 
+360
+∘
+ video summarization [1] (used to
+evaluate 
+360
+∘
+ video saliency prediction)
+  
+PVS-HM [10] 	 
+76
+ panoramic
+videos
+ 	 
+Driving, Sports,
+Movies, Video games
+ 	 
+Head movement and eye
+fixation data for 
+58
+ humans
+ 	 
+Viewport-dependent 
+360
+∘
+ video
+saliency prediction [5] 
+ 	Public
+VR-EyeTracking [11]	
+208
+ 
+360
+∘
+ videos	 
+Indoor scene,
+Outdoor activities,
+Music shows,
+Sports games,
+Short movies,
+Documentation
+ 	 
+Eye fixation data for 
+30
+humans
+- Viewport-dependent 
+360
+∘
+ video
+saliency prediction [5] 
+- 
+360
+∘
+ video summarization [1] (used to
+evaluate 
+360
+∘
+ video saliency prediction)
+ 	Public
+360
+∘
+ video highlight
+detection [8] 
+  	 
+2406
+ NFOV and
+115
+ 
+360
+∘
+ videos
+ 	 
+Wedding and
+music videos
+ 	 
+15
+%
+ most salient NFOV
+video clips for 
+25
+ 
+360
+∘
+ 
+videos from each category
+ 	
+360
+∘
+ video highlight detection [8]	Private
+360
+∘
+ video story-based
+summarization [9] 
+  	 
+285
+ 
+360
+∘
+ videos and
+9138
+ photostreams
+ 	 
+Wedding, Parade,
+Rowing, Scuba
+diving, Air ballooning
+ 	 
+Summaries for 
+50
+ 
+360
+∘
+ 
+videos (
+10
+ videos per topic)
+ 	 
+Story-based 
+360
+∘
+ video summarization [9] 
+(used to evaluate temporal summarization)
+ 	Private
+3The 360-VSumm Dataset
+Our dataset was formulated based on the VR-EyeTracking dataset [11], which comprises of 
+208
+ dynamic high-definition 
+360
+∘
+ videos from YouTube. These videos were captured using both static and moving cameras and have a duration that spans from 
+20
+ to 
+60
+ seconds. Moreover, as mentioned in Section 2, they exhibit a diverse range of content, including indoor and outdoor scenes, underwater activities, sports games, short films, and more. Fixation maps were produced with the help of 
+45
+ participants that utilized an HTC VIVE as their Head-Mounted Display (HMD) to immerse themselves in the 
+360
+∘
+ videos, and using the Unity game engine to record the participants’ head and gaze directions during their viewing experience. The fixation points were subsequently processed by convolving with a Gaussian filter with a standard deviation (
+s
+=
+9.35
+ degrees), as described in [12]. This process resulted in a set of ground-truth saliency maps for the ERP frames of each 
+360
+∘
+ video of the VR-EyeTracking dataset, that were used for constructing 360-VSumm.
+
+More specifically, we used the ERP frames and their associated ground-truth saliency maps to perform salient event detection and produce a 2D-video containing the detected events, following the algorithm described in [1]. This algorithm: i) identifies the salient regions in each frame by clustering salient points according to their intensity and distance, ii) defines spatial-temporally-correlated 2D sub-volumes by grouping together spatially related regions across a sequence of frames, iii) mitigates abrupt changes in the visual content of sub-volumes by adding possibly missing frames, iv) extracts the FOV for the salient regions of each ERP frame of the finally-formed sub-volume, v) forms the 2D-video fragments by cropping a spatial window around the salient regions of each ERP frame of the finally-formed sub-volumes, with an aspect ratio equal to 
+4
+:
+3
+, and vi) produces the 2D-video by stitching the extracted 2D-video fragments in chronological order. In addition, this algorithm computes a saliency score for each frame of the produced 2D-video, by averaging the saliency of the identified regions within that frame. After performing the aforementioned process on the entire set of 
+360
+∘
+ videos of the VR-EyeTracking dataset, we selected a subset of the created 2D-videos for further annotation in terms of video summarization, based on the following criteria: their visual content should be dynamic and diverse (in order to avoid videos that could be summarized using trivial approaches, such as random fragment sampling), and their duration should by longer than 
+1
+ minute (in order to filter-out very short videos that are of limited interest in terms of summarization). Through this process, we ended up with 
+40
+ 2D-videos with a duration ranging from 
+1
+ to 
+4
+ minutes. Most videos present more than one events (see the histogram on the left side of Fig. 1), which typically overlap in time or run in parallel in the 
+360
+∘
+ videos (see the histogram on the right side of Fig. 1).
+
+Refer to caption
+Figure 1:Histograms with the number of events per video (left side) and the number of events running in parallel per video (right side).
+The selected videos were annotated by 
+15
+ annotators (
+13
+ males 
+2
+ females with ages between 
+24
+−
+44
+), that were asked to pick the most important/interesting or informative parts of each video in order to form a summary with a duration that is approx. equal to the 
+15
+%
+ of the 2D-video’s length. As stated above, each 2D-video is composed of a set of fragments presenting the detected salient events in the corresponding 
+360
+∘
+ video. These fragments were further segmented into non-overlapping and roughly equal in length (
+2
+ sec.) sub-fragments, in order to allow the annotators to select specific parts of a given fragment for inclusion in the video summary rather than selecting the whole fragment. So, each 2D-video was segmented into M sub-fragments and the task of the annotators was to select N of these sub-fragments for inclusion in the summary, where N equals to 
+15
+%
+ of M. To facilitate the annotation process, we developed a tool with a user-friendly graphical interface that is depicted in Fig. 2. To start the annotation process, the participants have to load a video from the collection by clicking on the corresponding button on the upper right part of the interface. Subsequently, they see the first frame of the selected video in the video player of the tool and the sub-fragments of the video in the white-coloured area between the video player and the navigation buttons. Each dash in this area corresponds to a different sub-fragment and it is clickable to allow the selection of the relevant part of the video. Moreover, through the user interface the annotators are notified about the number of sub-fragments that should be selected in order to form a summary according to the targeted time budget. When the necessary number of sub-fragments is reached, the annotators can immediately check the formed summary by clicking on the relevant button. This action opens a new smaller video player (which appears in the left side of the main video player, in Fig. 2) that plays only the chosen parts of the video. If the annotator needs to make changes in the summary, s/he can replace one or more of the selected sub-fragments, by clicking once more on the relevant dashes (to un-select them) and click on other dashes (to select them). Through this process, the annotators can update the summary as many times as they wish, and can re-check it by clicking on the “Check Summary” button. After concluding to an optimal video summary, they have to click on the “Save annotations…” button in order to store their preferences for the annotated video. This process produces a txt file per video, containing information about the starting and ending frame of each selected sub-fragment of the video. As a note, the review of the formed summary is possible only when the correct number of sub-fragments has been selected. If the selected sub-fragments are less/more that the suggested ones, the relevant text in the user interface is coloured gray/red, while after clicking on the “Check Summary” button, the annotator is notified that “the number of selected fragments is lower/higher than the suggested one”. Moreover, the interface is equipped with the standard functionalities for navigation in the video, i.e., buttons for play/stop, frame-by-frame display (“>” and “<”), and 
+10
+ frames skip (“<<” and “>>”), while the annotators can navigate also via the horizontal scroll bar at the bottom of the interface.
+
+Refer to caption
+Figure 2:The graphical interface of the developed annotation tool.
+The created 360-VSumm dataset contains:
+
+• 
+40
+ 2D-videos that were created as described in the second paragraph of this section.
+• 
+15
+ ground-truth human-generated summaries per video (binary vectors indicating which frames have been selected for inclusion in the summary and which not).
+• A mean ground-truth summary that can be used for supervised training (obtained after averaging the 
+15
+ ground-truth summaries at the frame-level).
+• Data about the fragments of these videos, as defined by the applied salient event detection and 2D-video production algorithm.
+• Data about the sub-fragments of these videos, that were used during the annotation process.
+• Data about the saliency of each frame of these videos.
+The 360-VSumm dataset is publicly-available at: https://github.com/IDT-ITI/360-VSumm
+
+4Experiments
+Building on the created 360-VSumm dataset, we investigated the following research questions:
+
+• Can we use pre-trained models of state-of-the-art methods for conventional video summarization, to produce summaries for 
+360
+∘
+ videos?
+• Are there any observed performance gains after re-training these models using data from 
+360
+∘
+ videos?
+• Does it help to utilize information about the saliency of the visual content under summarization?
+To answer these questions, we considered two state-of-the-art methods for (traditional) video summarization from the literature, that learn how to estimate the importance of video frames using attention mechanisms. Based on their estimates, the video summary is formed by computing fragment-level importance (by averaging the importance of the frames that lie within each fragment) and selecting the top-scoring fragments so as to create a summary that lasts equally to the 
+15
+%
+ of the video duration. The first method is called PGL-SUM [15] and learns the task in a supervised manner using ground-truth annotations. PGL-SUM combines global and local multi-head attention mechanisms to discover different modelings of the frames’ dependence at different levels of granularity. Moreover, the utilized attention mechanisms integrate a component that encodes the temporal position of video frames, as this is of major importance when producing a video summary. The second method is called CA-SUM [14] and learns the task in a fully-unsupervised way based on a simple loss function that relates to the length of the generated video summary. CA-SUM integrates a concentrated attention mechanism that is able to focus on non-overlapping blocks in the main diagonal of the attention matrix, and to incorporate knowledge about the uniqueness and diversity of the associated frames of the video.
+
+4.1Implementation Details
+Following the typical approach in the video summarization literature [16], videos were downsampled to 2 fps and the sampled frames are represented using the output of the pool5 layer of GoogleNet [17] trained on ImageNet. With respect to PGL-SUM, we initialized the network’s weights using the Xavier uniform initialization approach with gain = 
+2
+ and biases = 
+0.1
+, we set the learning rate, dropout rate and L2 regularization factor equal to 
+5
+⋅
+10
+−
+5
+, 
+0.5
+ and 
+10
+−
+5
+ (as in [15]), and we trained the model for 
+600
+ epochs in a full-batch mode using the Adam optimizer. The utilized pre-trained models on the SumMe [18] and TVSum [19] benchmarking datasets for video summarization, were obtained from https://zenodo.org/records/5635735 (we picked the ones under “table3 models/dataset/split4” that exhibited the best performance. With regards to CA-SUM, we used the same network initialization approach with PGL-SUM, we set the learning rate and the L2 regularization factor equal to 
+5
+⋅
+10
+−
+4
+ and 
+10
+−
+5
+, respectively (similarly to [14]), and we trained the model for 600 epochs in a full-batch mode using the Adam optimizer. The utilized pre-trained models on the SumMe and TVSum datasets were downloaded from https://zenodo.org/records/6562992 (we picked the models under “SumMe/split3” and “TVSum/split4”, as these were the top-performing ones).
+
+In terms of evaluation, we estimate the similarity between a machine-generated and a user-defined summary by computing their overlap using the F-Score (as percentage), following the typical evaluation protocol in the literature [16]. So, for a given test video we compare the generated summary with the available user summaries for this video and compute an F-Score for each pair of compared summaries. Instead of computing the average value across the computed F-Scores, we then keep the maximum value as the final F-Score for this video, based on the intuition that a video summarization method should be able to produce a summary that resembles (at least) one of the user summaries. The computed F-Scores for all test videos are averaged and form the method’s performance on the test set. Finally, following the paradigm in the relevant literature [16], we split the dataset into five different splits to perform 5-fold cross validation. In each split, 
+80
+%
+ of the videos are used for training and the remaining 
+20
+%
+ for testing, while there are no overlaps between the tests sets. In the following, we report the average performance of each of the considered methods, over these runs.
+
+All experiments were carried out on an NVIDIA RTX 3090 GPU. The code for reproducing the reported results is publicly-available at: https://github.com/IDT-ITI/360-VSumm
+
+4.2Quantitative Results
+To examine the extent to which pre-trained models of PGL-SUM and CA-SUM on the most commonly used datasets in the video summarization literature (SumMe [18] and TVSum [19]) can be utilized to produce summaries for 
+360
+∘
+ videos, we measured their performance on the videos of the created 360-VSumm dataset and compared it with the performance of a random summarizer. The performance of a random summarizer on a given video was measured as proposed in [20]. In particular, we initially assigned randomly-created importance scores to the video frames based on a uniform distribution of probabilities. Following, we computed fragment-level scores based on the predefined segmentation of the video, and we formed the video summary by selecting the 
+15
+%
+ top-scoring fragments. Random summarization was performed 
+100
+ times and we report the average score over these runs. The values in Table 2 show that models of PGL-SUM and CA-SUM that have been trained for conventional 2D-video summarization, cannot be used for summarizing 
+360
+∘
+ videos as they exhibit random-level performance on the videos of the created 360-VSumm dataset. Such an experimental setting is taken into account in several works on video summarization (e.g., [21, 22, 23, 24, 25]) and called “transfer setting”. The reported results in these works show that this setting is more challenging than the canonical setting where a model is trained and evaluated on the same dataset, as a drop in performance is usually observed for the other (unseen during training) dataset; nevertheless, the recorded performance is clearly higher than the performance of a random summarizer. These findings shows that the summarization of 
+360
+∘
+ videos is a different and more challenging task, and needs methods that are better tailored to the visual characteristics of such videos.
+
+Table 2:The performance (F-Score (%)) of a random summarizer and two pre-trained models of PGL-SUM and CA-SUM, on the 360-VSumm dataset.
+Method	 
+Pre-training
+dataset
+ 	 
+Performance
+(F-Score (%))
+ 
+PGL-SUM	SumMe	33.7
+TVSum	33.2
+CA-SUM	SumMe	36.5
+TVSum	35.4
+Random	-	35.2
+Table 3:The performance (F-Score (%)) of PGL-SUM after being trained on the 360-VSumm dataset, for different configurations with respect to the number of local attention mechanisms (upper part) and the number of global and local attention heads (lower part).
+Study on local attention mechanisms
+# of local
+attention
+  	2	4	8
+Performance
+(F-Score (%))
+  	46.0	46.0	46.3
+Study on attention heads
+Global
+Local
+2	4	8
+2	46.6	46.5	47.3
+4	47.3	46.3	46.4
+8	46.0	46.3	45.8
+16	46.3	45.9	47.9
+Subsequently, to quantify possible gains in the summarization performance after training these models with data from 
+360
+∘
+ videos, we re-trained and evaluated models of PGL-SUM and CA-SUM using the formed data splits for 360-VSumm. Instead of taking into account only the default values for the hyper-parameters of these models (as reported in [14, 15]), we experimented with various options aiming to find the top-performing configurations. For PGL-SUM, we started by trying to find the optimal number of local attention mechanism and continued by investigating different choices about the number of attention heads (similarly to the methodology in [14]). The results in the upper part of Table 3 indicate that a higher (and maximum supported) number of local attention mechanisms than the one in the original PGL-SUM model (equal to four) improves the model’s effectiveness on the 360-VSumm dataset, as it leads to higher summarization performance. Furthermore, the examined combinations about the number of attention heads demonstrate that the use of the maximum allowed heads for the global and the eight local attention mechanisms, results in a further performance improvement by 
+1.6
+%
+ (see the lower part of Table 3). For CA-SUM, we initially ran experiments for the different values of the regularization factor sigma that are taken into account by the original method, and then we focused on the block size of the concentrated attention mechanism. The reported results in the upper part of Table 4 show that the best performance for the default block size of CA-SUM (which was set equal to 
+60
+ based on the restrictions of the SumMe and TVSum datasets) is obtained after setting the regularization factor equal to 
+0.7
+. Subsequent evaluations using this regularization factor show that a larger block size (equal to 
+70
+) favors the learning process, as it further advances the summarization performance by 
+0.6
+%
+. Based on the findings reported above, we argue that using the created 360-VSumm dataset for training models that have been designed for conventional video summarization, can lead to noticeable performance gains that clearly distinguish these models from baseline (random) approaches. In addition, a performance comparison between the PGL-SUM and CA-SUM demonstrates that using a supervision signal for training is beneficial, as it leads to improved summarization performance.
+
+Table 4:The performance (F-Score (%)) of CA-SUM after being trained on the 360-VSumm dataset, for different values of the regularization factor sigma (upper part) and the block size of the concentrated attention mechanism (lower part).
+Study about the regularization factor sigma
+Regular. factor	0.5	0.6	0.7	0.8	0.9
+Performance
+(F-Score (%))
+  	44.2	43.5	44.7	44.4	43.9
+Study about the block size of the attention
+Block size	50	60	70	80	90
+Performance
+(F-Score (%))
+  	44.2	44.7	45.3	44.6	43.7
+Finally, we investigated the influence of using auxiliary information about the saliency of the visual content, during the training of the video summarization models. For this, we evaluated the performance of variants of PGL-SUM and CA-SUM that use the computed saliency scores for the frames of the produced 2D-videos (as described in the second paragraph of Section 3) to weight the extracted representations of the visual content of these frames. Thus, these variants incorporate information about both the visual content and the saliency of each frame. The outcomes of the conducted evaluations, reported in Table 5, indicate the positive impact of using the frames’ saliency when summarizing 
+360
+∘
+ videos, since it leads to increased summarization performance for both PGL-SUM and CA-SUM methods.
+
+Table 5:The performance (F-Score (%)) of the top-performing models of PGL-SUM and CA-SUM, after being trained using also information about the visual saliency of the video frames.
+Method	 
+Performance
+(F-Score (%))
+ 
+Random
+Summarizer
+  	35.2
+PGL-SUM	47.9
+PGL-SUM-sal	48.2
+CA-SUM	45.3
+CA-SUM-sal	46.6
+4.3Qualitative Results
+In addition to the above reported quantitative evaluations, we conducted a qualitative analysis using two indicative videos of the created 360-VSumm dataset and examining the produced video summaries by the best-performing models of CA-SUM, PGL-SUM and their saliency-aware variants. Both videos present multiple events that either overlap in time or run in parallel in the original 
+360
+∘
+ video. We argue that the summarization of such videos is a more challenging task compared to the summarization of a video showing a single event, as an optimal video summary should contain information about all the events in the full-length video. Our analysis was based on the examples depicted in Fig. 3 and 4. In both of these figures, the top part provides a frame-based overview of the presented events in the videos after selecting some representative keyframes (for space reasons). The bottom part contains the created video summaries by the aforementioned models, that are presented using a number of representative keyframes (for the sake of space, we excluded visually-similar frames from these illustrations).
+
+Concerning the first example, as shown in Fig. 3, the created summary by CA-SUM focuses mainly on the first event of the video, contains a small part of the second event, and is missing information about the third event. The produced summary after taking into account the frames’ saliency (CA-SUM-sal) includes mainly introductory parts from the first and third event, and lacks information about the second event. The PGL-SUM method appears to be more effective, as the created summary comprises of segments that correspond to all three events of the video. However, it mainly focuses on the first event and fails to convey information about the main activity in the remaining two. Incorporating information also about the frames’ saliency (PGL-SUM-sal) leads to a more complete video summary, that covers all the different events in a more balanced and descriptive way. With respect to the second example, as illustrated in Fig. 4, CA-SUM forms a video summary which presents mainly the activity at the left and right side of the airplane that carries the video camera (first and fourth event), contains some views from the back of the pilot (second event), and completely misses the front view of the pilot (third event). Similar remarks can be made for CA-SUM-sal, with the observation that the second event is less pronounced in the produced summary. With respect to the remaining methods (PGL-SUM, PGL-SUM-sal), the created summaries contain parts from all the different events, thus proving a complete overview of the video. The findings reported above are aligned with the outcomes of our quantitative evaluations, as they indicate the advanced performance of PGL-SUM compared to CA-SUM and demonstrate the positive impact of extracting and using information about the frames’ saliency, when summarizing 
+360
+∘
+ videos.
+
+Refer to caption
+Figure 3:A frame-based overview of the presented events in the video (top part), and the produced summaries by the best-performing models of CA-SUM, PGL-SUM and their saliency-aware variants (bottom part).
+Refer to caption
+Figure 4:A frame-based overview of the presented events in the video (top part), and the produced summaries by the best-performing models of CA-SUM, PGL-SUM and their saliency-aware variants (bottom part).
+5Conclusions and Next Steps
+In this paper we presented the 360-VSumm dataset that can be used for training and evaluating methods for 
+360
+∘
+ video summarization. Based on the created dataset, we trained two state-of-the-art methods for conventional 2D-video summarization and assessed their performance to form a baseline for future comparisons. Moreover, we took into account two saliency-aware variants of these methods and documented the positive impact of incorporating information about the frames’ saliency during the summarization process. Finally, we presented the developed interactive tool for annotation purposes, that can be used to facilitate similar annotation activities. In the future, we will extract additional information about the frames of the produced 2D-videos (such as their spatial positioning in the 
+360
+∘
+ video) and use it as extra auxiliary data for training 
+360
+∘
+ video summarization methods.
+
+Acknowledgments
+This work was supported by the EU Horizon Europe and Horizon 2020 programmes under grant agreements 101070109 TransMIXR and 951911 AI4Media, respectively.
+
+References
+[1]
+Ioannis Kontostathis, Evlampios Apostolidis, and Vasileios Mezaris.An integrated system for spatio-temporal summarization of 360-degrees videos.In Stevan Rudinac, Alan Hanjalic, Cynthia Liem, Marcel Worring, Björn Þór Jónsson, Bei Liu, and Yoko Yamakata, editors, MultiMedia Modeling, pages 202–215, Cham, 2024. Springer Nature Switzerland.
+[2]
+Yu-Chuan Su, Dinesh Jayaraman, and Kristen Grauman.Pano2vid: Automatic cinematography for watching 360 videos.In Proc. of the Asian Conference on Computer Vision (ACCV), 2016.
+[3]
+Yu-Chuan Su and Kristen Grauman.Making 360deg video watchable in 2d: Learning videography for click free viewing.In Proc. of the IEEE Conf. on Computer Vision and Pattern Recognition (CVPR), 2017.
+[4]
+Hou-Ning Hu, Yen-Chen Lin, Ming-Yu Liu, Hsien-Tzu Cheng, Yung-Ju Chang, and Min Sun.Deep 360 pilot: Learning a deep agent for piloting through 360deg sports videos.In Proc. of the IEEE Conf. on Computer Vision and Pattern Recognition (CVPR), 2017.
+[5]
+Minglang Qiao, Mai Xu, Zulin Wang, and Ali Borji.Viewport-dependent saliency prediction in 360° video.IEEE Transactions on Multimedia, 23:748–760, 2021.
+[6]
+Kyoungkook Kang and Sunghyun Cho.Interactive and automatic navigation for 360° video playback.ACM Trans. Graph., 38(4), 2019.
+[7]
+Miao Wang, Yi-Jun Li, Wen-Xuan Zhang, Christian Richardt, and Shi-Min Hu.Transitioning360: Content-aware nfov virtual camera paths for 360° video playback.In 2020 IEEE International Symposium on Mixed and Augmented Reality (ISMAR), pages 185–194, 2020.
+[8]
+Youngjae Yu, Sangho Lee, Joonil Na, Jaeyun Kang, and Gunhee Kim.A Deep Ranking Model for Spatio-Temporal Highlight Detection From a 360 Video.In Proc. of the 2018 AAAI Conf. on Artificial Intelligence, 2018.
+[9]
+Sangho Lee, Jinyoung Sung, Youngjae Yu, and Gunhee Kim.A memory network approach for story-based temporal summarization of 360° videos.In Proc. of the IEEE Conf. on Computer Vision and Pattern Recognition (CVPR), June 2018.
+[10]
+Mai Xu, Yuhang Song, Jianyi Wang, Minglang Qiao, Liangyu Huo, and Zulin Wang.Predicting head movement in panoramic video: A deep reinforcement learning approach.IEEE Transactions on Pattern Analysis and Machine Intelligence, 41(11):2693–2708, 2019.
+[11]
+Yanyu Xu, Yanbing Dong, Junru Wu, Zhengzhong Sun, Zhiru Shi, Jingyi Yu, and Shenghua Gao.Gaze prediction in dynamic 360° immersive videos.In 2018 IEEE/CVF Conference on Computer Vision and Pattern Recognition, pages 5333–5342, 2018.
+[12]
+Yasser Dahou, Marouane Tliba, Kevin McGuinness, and Noel O’Connor.Atsal: An attention based architecture for saliency prediction in 360 videos.In Alberto Del Bimbo, Rita Cucchiara, Stan Sclaroff, Giovanni Maria Farinella, Tao Mei, Marco Bertini, Hugo Jair Escalante, and Roberto Vezzani, editors, Pattern Recognition. ICPR International Workshops and Challenges, pages 305–320, Cham, 2021. Springer International Publishing.
+[13]
+Edurne Bernal-Berdun, Daniel Martin, Diego Gutierrez, and Belen Masia.SST-Sal: A spherical spatio-temporal approach for saliency prediction in 360 videos.Computers & Graphics, 106:200–209, 2022.
+[14]
+Evlampios Apostolidis, Georgios Balaouras, Vasileios Mezaris, and Ioannis Patras.Summarizing videos using concentrated attention and considering the uniqueness and diversity of the video frames.In Proceedings of the 2022 International Conference on Multimedia Retrieval, ICMR ’22, page 407–415, New York, NY, USA, 2022. Association for Computing Machinery.
+[15]
+Evlampios Apostolidis, Georgios Balaouras, Vasileios Mezaris, and Ioannis Patras.Combining global and local attention with positional encoding for video summarization.In 2021 IEEE International Symposium on Multimedia (ISM), pages 226–234, 2021.
+[16]
+Evlampios Apostolidis, Eleni Adamantidou, Alexandros I. Metsai, Vasileios Mezaris, and Ioannis Patras.Video summarization using deep neural networks: A survey.Proceedings of the IEEE, 109(11):1838–1863, 2021.
+[17]
+Christian Szegedy, Wei Liu, Yangqing Jia, Pierre Sermanet, Scott Reed, Dragomir Anguelov, Dumitru Erhan, Vincent Vanhoucke, and Andrew Rabinovich.Going deeper with convolutions.In 2015 IEEE Conference on Computer Vision and Pattern Recognition (CVPR), pages 1–9, 2015.
+[18]
+Michael Gygli, Helmut Grabner, Hayko Riemenschneider, and Luc Van Gool.Creating Summaries from User Videos.In David Fleet, Tomas Pajdla, Bernt Schiele, and Tinne Tuytelaars, editors, Europ. Conf. on Computer Vision (ECCV) 2014, pages 505–520, Cham, 2014. Springer International Publishing.
+[19]
+Yale Song, J. Vallmitjana, A. Stent, and A. Jaimes.TVSum: Summarizing web videos using titles.In 2015 IEEE/CVF Conf. on Computer Vision and Pattern Recognition (CVPR), pages 5179–5187, June 2015.
+[20]
+Evlampios Apostolidis, Eleni Adamantidou, Alexandros I. Metsai, Vasileios Mezaris, and Ioannis Patras.Performance over Random: A Robust Evaluation Protocol for Video Summarization Methods.In Proc. of the 28th ACM Int. Conf. on Multimedia (MM ’20), page 1056–1064, New York, NY, USA, 2020. ACM.
+[21]
+Guoqiang Liang, Yanbing Lv, Shucheng Li, Shizhou Zhang, and Yanning Zhang.Video summarization with a convolutional attentive adversarial network.Pattern Recognition, 131:108840, 2022.
+[22]
+H. Min, H. Ruimin, W. Zhongyuan, Xi. Zixiang, and Z. Rui.Spatiotemporal two-stream lstm network for unsupervised video summarization.Multimedia Tools and Applications, 81:40489–40510, 2022.
+[23]
+Wencheng Zhu, Jiwen Lu, Yucheng Han, and Jie Zhou.Learning multiscale hierarchical attention for video summarization.Pattern Recognition, 122:108312, 2022.
+[24]
+Sha-Sha Zang, Hui Yu, Yan Song, and Ru Zeng.Unsupervised video summarization using deep non-local video summarization networks.Neurocomputing, 519:26–35, 2023.
+[25]
+Yunzuo Zhang, Yameng Liu, and Cunyu Wu.Attention-guided multi-granularity fusion model for video summarization.Expert Systems with Applications, 249:123568, 2024.

@@ -1,0 +1,3593 @@
+License: arXiv.org perpetual non-exclusive license
+arXiv:2509.10127v2 [cs.CL] 03 Oct 2025
+Population-Aligned Persona Generation for LLM-based Social Simulation
+Zhengyu Hu1,  Jianxun Lian2,    Zheyuan Xiao1,  Max Xiong3,   Yuxuan Lei2,
+  Tianfu Wang1,   Kaize Ding4,   Ziang Xiao5,   Nicholas Jing Yuan6,   Xing Xie2
+1 HKUST  2 Microsoft Research Asia  3 Duke University   4 Northwestern University
+ 5 Johns Hopkins University  6 Microsoft
+(5 June 2009)
+Abstract.
+Recent advances in large language models (LLMs) have enabled human-like social simulations at unprecedented scale and fidelity, offering new opportunities for computational social science. A key challenge, however, is the construction of persona sets that authentically represent the diversity and distribution of real-world populations. Most existing LLM-based social simulation studies focus primarily on designing agentic frameworks and simulation environments, often overlooking the complexities of persona generation and the potential biases introduced by unrepresentative persona sets. In this paper, we propose a systematic framework for synthesizing high-quality, population-aligned persona sets for LLM-driven social simulation. Our approach begins by leveraging LLMs to generate narrative personas from long-term social media data, followed by rigorous quality assessment to filter out low-fidelity profiles. We then apply importance sampling to achieve global alignment with reference psychometric distributions, such as the Big Five personality traits. To address the needs of specific simulation contexts, we further introduce a task-specific module that adapts the globally aligned persona set to targeted subpopulations. Extensive experiments demonstrate that our method significantly reduces population-level bias and enables accurate, flexible social simulation for a wide range of research and policy applications.
+
+LLM-based Social Simulation, Population-Level Alignment
+†copyright: acmlicensed
+†journalyear: 2018
+†doi: XXXXXXX.XXXXXXX
+†conference: Make sure to enter the correct conference title from your rights confirmation email; June 03–05, 2018; Woodstock, NY
+†isbn: 978-1-4503-XXXX-X/2018/06
+†ccs: Computing methodologies Natural language processing
+†ccs: Human-centered computing Human computer interaction (HCI)
+†ccs: Human-centered computing Collaborative and social computing
+1.Introduction
+Recent advances in Large Language Models (LLMs) have revealed impressive general intelligence across diverse tasks such as mathematics (Setlur et al., 2024; Dong et al., 2025), coding (Kim et al., 2024; Zeng et al., 2025), and reasoning (Yuan et al., 2024; Han et al., 2024). Unlike traditional machine learning models, which are limited to narrow domains, LLMs display broad, human-like flexibility (Huang et al., 2024; Chang et al., 2023; Gallegos et al., 2023). Furthermore, a growing body of research shows that LLMs start to exhibit features of human cognition, including aspects of theory of mind and social intelligence (Binz et al., 2025; Strachan et al., 2024; Street et al., 2024; Lu et al., 2025; Gandhi et al., 2023; Zhou et al., 2023). These capabilities position LLM-based social simulation as a highly promising direction for computational social science. By assigning proper personas and prompting LLMs to role-play as individuals, researchers can simulate human behaviors and attitudes at scale for various applications such as policy analysis (Fulay and Roy, 2025; Chen et al., 2025), behavioral prediction (Nguyen et al., 2024; Song et al., 2024), and fairness assessment (Karvonen and Marks, 2025; Chhikara et al., 2024). This not only accelerates social science research but also reduces reliance on human subjects for sensitive studies and enables early detection of potential social risks.
+
+A central challenge in simulating societal patterns and dynamics lies in constructing a persona set whose distribution authentically reflects the diversity of traits, behaviors, and psychometric profiles found in real-world populations. However, most large-scale social simulation studies focus primarily on agentic frameworks, often overlooking the complexities and importance of persona set construction. For example, Zhang et al. (2025b) simply selects 1,000 random Weibo users, (Gao et al., 2023) uses only three demographic attributes, and (Wang et al., 2025a) relies on LLM-generated or randomly sampled profiles. While (Zhang et al., 2025c) adopts a more sophisticated approach, it has two notable limitations: the persona schema is restricted to a fixed set of 15 demographic dimensions, and it assumes that a target group distribution is available prior to persona set construction-an assumption that rarely holds in practice. Overall, if the persona set is not representative, simulation results risk significant bias. This paper aims to provide a rigorous study on constructing faithful persona sets and examines their impact on social simulation outcomes.
+
+As an illustrative example (see Figure 1), we demonstrate how experimental results can be biased when a dataset focuses solely on individual-level persona quality while overlooking alignment at the population level. In this example, we prompt an LLM (Qwen2.5-72B) to role-play as humans completing the IPIP self-report inventory (International Personality Item Pool, [n. d.]) to assess the Big Five personality traits. Figure 1(a) shows the distribution of Big Five traits among real humans, based on data from over one million individuals across 223 countries and regions (Open-Source Psychometrics Project, [n. d.]) , representing a globally diverse psychometric population. As a naive baseline, Figure 1(b) presents the distribution obtained by running the LLM without any persona assignment and using a high temperature (1.0), which reflects variation due solely to model randomness. We then compare six well-known persona sets from the literature-Tulu-3-Persona (Lambert et al., 2024), Bavard (Zhang et al., 2018a), Google Synthetic (Jandaghi et al., 2023), AlignX (Li et al., 2025), Nvidia Nemotron (Meyer and Corneil, 2025), and PersonalHub (Chan et al., 2024), with their distributions shown in Figure 1(c-h), along with an additional persona set shown in Figure 1(i), which was generated by GPT-4o using the same sample size as the other sets under a high temperature setting (1.0). As expected, while some improvements are observed when persona sets are provided compared to the random baseline, substantial misalignment with real-world distributions persists at the population level. This highlights the urgent need for principled approaches to ensure faithful population-level simulation in LLM-based social modeling.
+
+Refer to caption
+Figure 1. Distributions of Big Five personality traits from real human data, LLM responses without personas, six existing persona sets, and GPT-4o-generated personas.
+In this paper, we study the establishment of a synthesized persona foundation for LLM-based social simulation. We propose a systematic framework to construct a high-quality persona set that is well-aligned with real-world population distributions. Our framework consists of three key designs:
+
+(1) High-quality Individual Personas. First, to ensure that synthesized personas vividly and accurately represent real individuals, we use the Llama-3.3-70B model to extract narrative personas from users’ long-term social media histories, drawing data from platform: blogs (Schler et al., 2006). Unlike previous works (Gao et al., 2023; Zhang et al., 2025c) that use a fixed set of demographic attributes as the persona schema, we opt for narrative personas to retain flexibility and avoid inaccuracies stemming from missing demographic information. We then leverage another LLM, Qwen2.5-72B, as an evaluator to rate the quality of synthesized personas, retaining only those that exceed a preset quality threshold. Experimental results demonstrate that this generated persona set already significantly outperforms existing baselines in capturing population-level distributions across various psychometric measures.
+
+(2) Global Distribution Alignment. Despite these improvements, the initially generated persona set still contains biases introduced by the unique user characteristics of online social platform. In the second design, we prompt each raw persona to complete a psychometric inventory via the LLM, producing an LLM‑based response distribution. We then compare this distribution with the human reference and employ a two‑stage resampling techniques, importance sampling followed by optimal transport, to make resampled distribution matches the human one. The personas linked to these resampled points constitute our population‑aligned persona set. Given the generalizability of the Big Five personality traits, we adopt the widely used IPIP Big Five psychometric test (International Personality Item Pool, [n. d.]; Goldberg, 1992; Open-Source Psychometrics Project, [n. d.]) as the reference for aligning personality trait distributions across the global population. To assess the effectiveness of this alignment, we further evaluate the selected persona set on several other psychometric tests, such as CFCS (Strathman et al., 1994), FBPS (OpenPsychometrics.org, 2019), and Duckworth (Duckworth et al., 2007), as out-of-domain (OOD) benchmarks. Our experimental results confirm that the global alignment generalizes well to these OOD tests.
+
+(3) Group-specific Population Adjustment. Recognizing that most real-world social simulation applications do not require modeling the global population but instead focus on specific groups, such as college students or residents of a particular country, our third design provides a module for generating group-specific persona sets. Given a task-specific query, this module retrieves relevant personas from the globally aligned set using embedding similarity to form a seed set. We then employ an LLM to make minor revisions to each persona in the seed set, ensuring their suitability for the current task. Experimental results on YRBSS (Centers for Disease Control and Prevention, 2019) and regional WVS (Inglehart et al., 2020) datasets demonstrate that this approach effectively produces group-specific persona populations.
+
+In summary, our contributions include:
+
+• We emphasize the importance of population-level persona alignment for LLM-based social simulation, and propose a systematic framework to generate persona sets that accurately reflect real-world population distributions.
+• We design a two-stage alignment method combining Importance Sampling and Optimal Transport for global distribution matching.
+• We develop a persona targeting module that supports group-specific persona alignment through embedding retrieval and LLM revision, thereby facilitating its practical application in diverse social science scenarios.
+• Through comprehensive evaluation across six different psychometric tests, we demonstrate the superiority of our framework over existing persona sets in terms of distributional alignment, behavioral consistency, and group-specific alignment scenarios.
+2.Related Work
+Refer to caption
+Figure 2. Overview of the Population-Aligned Persona Framework.
+LLM-based Simulation for Social Science. LLMs are increasingly employed to simulate human behavior, presenting new possibilities for social science research (Park et al., 2023; Chuang et al., 2023a; Wang et al., 2024b; Xie et al., 2025; Gao et al., 2023; Xie et al., 2024; Wang et al., 2025a; Zhang et al., 2025c, b; Wang et al., 2025c). These simulations enable scalable and cost-effective analyses of attitudes, preferences, and decision-making processes (Ding et al., 2023; Wang et al., 2025b; Lee et al., 2024; Xie et al., 2024). Prior work has primarily emphasized individual-level fidelity, focusing on ensuring that simulated agents produce realistic and consistent outputs. For instance, Shao et al. (2023) simulate users in dialogue tasks to enable personalized conversation generation, while Kong et al. (2023) study persona style transfer to increase dialogue diversity. Other studies have explored modeling individual reasoning traits (Chen et al., 2024), proposing persona-aware evaluation metrics (Lu et al., 2024), and introducing benchmarks such as CharacterEval for role-playing agent evaluation (Tu et al., 2024). Group-level phenomena have also been examined, including polarization dynamics (Piao et al., 2025), partisan group behaviors (Chuang et al., 2023b), and role-playing ordinary individuals (Ng et al., 2024). Recently, Wu et al. (2025) point out that LLM-based simulations tend to default to an ”average persona” that underrepresents behavioral heterogeneity, thereby diminishing the realism of emergent group dynamics. They argue that focusing on collective patterns can mitigate these limitations by anchoring simulations in population-level distributions. However, existing approaches often lack mechanisms to ensure that simulated persona populations collectively reflect real-world trait distributions, which can result in biased simulation outcomes.
+
+Persona Modeling and Evaluation. Personas are widely utilized in NLP for modeling agent traits and behaviors in dialogue (Hong et al., 2023; Wang et al., 2023), user modeling (Li et al., 2024; Kaur et al., 2025), and social simulation (Cheng et al., 2023; Hu et al., 2025; Ju et al., 2025). Persona generation methods range from manual curation to automatic approaches using LLMs. Early work introduced persona-based neural conversation models to encode speaker traits for consistent dialogue (Li et al., 2016), while later studies enhanced engagement by conditioning responses on both self and partner profiles (Zhang et al., 2018b). More recent methods employ LLMs to simulate historical or fictional characters (Shao et al., 2023) and to guide profile generation for personalized outputs (Zhang, 2024). Evaluation has largely focused on individual-level attributes such as coherence, consistency, and persona-grounded dialogue. Recent benchmarks and frameworks, including RPGBench (Yu et al., 2025), PersonaGym (Samuel et al., 2024), and analyses of lexical diversity in persona descriptions (Sethi et al., 2025), assess the role-playing and fidelity of LLM-generated personas. While these efforts advance persona-based simulation and individual agent fidelity, comprehensive frameworks for constructing population-aligned persona sets remain scarce, leading to meaningful biases in simulation outcomes. Our work addresses this gap by introducing a principled pipeline that generates narrative personas, aligns persona sets with psychometric reference distributions (e.g. Big Five), and adapts persona populations to task-specific subgroups.
+
+3.Population-Aligned Persona Framework
+Our framework consists of three key components: (1) Seed Persona Mining, which extracts and filters high-quality narrative personas from large-scale human-authored corpora; (2) Global Distribution Alignment, which uses a two-stage sampling strategy, Importance Sampling and Optimal Transport, to align persona distributions with human psychometric data; and (3) Group-specific Persona Construction, where we support targeted persona generation for specific tasks. An overview is shown in Figure 2.
+
+3.1.Seed Persona Mining
+We construct a high-quality seed persona pool from a large-scale human-authored corpora: the Blog Authorship Corpus (Schler et al., 2006) (681K posts). This sources provide diverse narratives across demographic and behavioral dimensions. The mining pipeline includes four stages:
+
+Preprocessing. We clean each corpus to ensure data authenticity and narrative richness. For the blog corpus, we discard entries under 30 tokens or lacking first-person pronouns. All remaining texts are rewritten using Llama-3-70B to remove HTML tags, URLs, non-English content, and formatting noise. This results in approximately 500K blog.
+
+Raw Text Quality Control. Each rewritten post is annotated using Llama-3-70B with two labels: a three-level quality score (high, medium, low), and a binary harmfulness label. High-quality content is expected to reflect personal experience, emotions, or social behavior, while excluding boilerplate or ad-like content. Harmful content (e.g., violence, privacy violations) is filtered out. Only posts rated both high-quality and harmless are retained, resulting in final counts of 368K blog.
+
+Persona Generation. We aggregate posts by author and discard users with fewer than six posts. Each user’s posts are concatenated into a single text block 
+s
+, which is passed to Llama-3-70B to generate a grounded persona summary 
+p
+i
+=
+𝒢
+​
+(
+s
+)
+, where the model is prompted to cite evidence from 
+s
+ for factual grounding.
+
+Persona Quality Control. To ensure quality, we use a critic LLM to score each persona 
+p
+i
+ on five dimensions: hallucination (faithfulness to source text), coverage (salience of user traits), conciseness (well-formed and within 100 words), relevance (exclusion of generic or promotional content), and overall quality. Each score ranges from 1 to 10. We retain personas with an overall score 
+>
+8 and all other dimensions 
+>
+7. This step filters out approximately 30% of personas from each source.
+
+The resulting seed pool contains over 160,000 high-fidelity narrative personas covering diverse psychometric and demographic attributes. Full data statistics, prompt templates, and filtering thresholds are detailed in Appendix F.
+
+3.2.Global Distribution Alignment via Two-stage Sampling
+Let 
+𝒫
+=
+{
+p
+i
+}
+i
+=
+1
+N
+ denote a set of high-quality textual personas (see Section 3.1), and let 
+𝒬
+=
+{
+q
+k
+}
+k
+=
+1
+d
+ be a fixed set of psychometric prompts (e.g., Big Five questionnaire items). Let LLM be a language model that maps a concatenated persona-question pair to a scalar response. For each persona 
+p
+i
+ and question 
+q
+k
+, we define the model response as:
+
+(1)		
+x
+i
+​
+k
+:=
+LLM
+​
+(
+p
+i
+∥
+q
+k
+)
+,
+where 
+∥
+ denotes textual concatenation. We collect the responses for all 
+d
+ questions to form a response vector 
+x
+i
+=
+(
+x
+i
+​
+1
+,
+…
+,
+x
+i
+​
+d
+)
+∈
+ℝ
+d
+ for each persona 
+p
+i
+. The full set 
+{
+x
+i
+}
+i
+=
+1
+N
+ defines an empirical distribution over model-induced responses, which we denote as 
+r
+persona
+. Similarly, we let 
+Y
+=
+{
+y
+j
+}
+j
+=
+1
+M
+⊂
+ℝ
+d
+ represent the human response vectors obtained from survey data, and denote the corresponding empirical distribution as 
+r
+human
+. In this work, we use large-scale human response data from the widely used IPIP Big Five inventory (International Personality Item Pool, [n. d.]; Goldberg, 1992; Open-Source Psychometrics Project, [n. d.]), spanning one million individuals across 223 countries and regions, as a representative reference for real-world personality distributions.
+
+Given a persona set 
+𝒫
+ with induced response distribution 
+r
+persona
+ and a human response distribution 
+r
+human
+, our objective is to select a subset 
+𝒫
+′
+⊆
+𝒫
+, such that its empirical distribution recovers the human distribution. To achieve this, we adopt a two-stage sampling framework combining Importance Sampling (IS) and Optimal Transport (OT). The IS stage acts as a coarse filter that concentrates sampling on regions where the persona distribution overlaps significantly with the human distribution, thereby reducing both computational cost and the risk of OT degenerating due to large distributional gaps. The subsequent OT stage then performs fine-grained alignment within this candidate pool, ensuring that the final sampled personas closely match the detailed structure of human responses.
+
+Stage 1: Importance Sampling (IS). In the first stage, our goal is to efficiently select a subset of personas whose response distributions significantly overlap with the human distribution. To achieve this, we estimate the probability densities of both the human response distribution 
+r
+human
+ and the original persona distribution 
+r
+persona
+ via Kernel Density Estimation (KDE). Specifically, employing a Gaussian kernel with bandwidth 
+h
+>
+0
+, we obtain the density estimates:
+
+(2)		
+r
+^
+human
+​
+(
+x
+)
+=
+1
+M
+​
+∑
+j
+=
+1
+M
+𝒩
+​
+(
+x
+−
+y
+j
+;
+h
+2
+​
+I
+)
+,
+r
+^
+persona
+​
+(
+x
+)
+=
+1
+N
+​
+∑
+i
+=
+1
+N
+𝒩
+​
+(
+x
+−
+x
+i
+;
+h
+2
+​
+I
+)
+,
+where 
+I
+∈
+ℝ
+d
+×
+d
+ denotes the identity matrix, and 
+𝒩
+​
+(
+z
+;
+h
+2
+​
+I
+)
+ represents a multivariate Gaussian density centered at zero with covariance 
+h
+2
+​
+I
+. Using these KDE-based estimates, we calculate an importance weight for each persona response vector 
+x
+i
+ as the ratio of the estimated densities: 
+w
+i
+IS
+=
+r
+^
+human
+​
+(
+x
+i
+)
+r
+^
+persona
+​
+(
+x
+i
+)
+.
+ Intuitively, the weight 
+w
+i
+IS
+ quantifies the relative likelihood of observing the response vector 
+x
+i
+ under the human response distribution compared to the original persona distribution. Therefore, personas with higher importance weights indicate a stronger alignment with human responses. To convert these importance weights into valid sampling probabilities, we normalize them as:
+
+(3)		
+π
+i
+=
+w
+i
+IS
+∑
+k
+=
+1
+N
+w
+k
+IS
+,
+with
+​
+∑
+i
+=
+1
+N
+π
+i
+=
+1
+.
+Finally, we draw 
+N
+†
+ candidate personas from the original set 
+𝒫
+ according to the probabilities 
+{
+π
+i
+}
+:
+
+(4)		
+𝒫
+†
+∼
+Multinomial
+​
+(
+N
+†
+,
+{
+π
+i
+}
+i
+=
+1
+N
+)
+,
+forming the candidate set 
+X
+†
+=
+{
+x
+i
+∣
+p
+i
+∈
+𝒫
+†
+}
+. This step effectively reduces the sample space to personas closely resembling human respondents, providing a high-quality initial candidate pool for further refinement in the next stage.
+
+Stage 2: Optimal Transport (OT). While Importance Sampling identifies a promising subset of personas, it does not guarantee fine-grained alignment with the detailed structure of the human response distribution. Therefore, we introduce a second stage leveraging entropic Optimal Transport to precisely match the selected personas to the human data at a granular level.
+
+Recall that each persona response vector 
+x
+i
+†
+∈
+ℝ
+d
+ and human response vector 
+y
+j
+∈
+ℝ
+d
+ comprise responses to a set of 
+d
+ psychometric prompts 
+𝒬
+=
+{
+q
+k
+}
+k
+=
+1
+d
+. To explicitly account for the importance of individual questionnaire items during alignment, we introduce a set of weights 
+{
+ω
+k
+}
+k
+=
+1
+d
+, with 
+ω
+k
+>
+0
+ denoting the importance of prompt 
+q
+k
+. Thus, we construct the cost matrix 
+C
+∈
+ℝ
+N
+†
+×
+M
+ as a weighted sum of squared differences:
+
+(5)		
+C
+i
+​
+j
+=
+∑
+k
+=
+1
+d
+ω
+k
+​
+(
+x
+i
+​
+k
+†
+−
+y
+j
+​
+k
+)
+2
+.
+Our goal is then to identify an optimal probabilistic matching (transport plan) 
+Γ
+∈
+ℝ
+N
+†
+×
+M
+ between the two sets of vectors, such that the total weighted transport cost is minimized while maintaining uniform marginal distributions. We formulate the following entropic-regularized OT optimization problem:
+
+(6)		
+Γ
+⋆
+=
+arg
+⁡
+min
+Γ
+∈
+Π
+​
+(
+𝐚
+†
+,
+𝐛
+)
+⁡
+⟨
+C
+,
+Γ
+⟩
++
+ε
+​
+∑
+i
+,
+j
+Γ
+i
+​
+j
+​
+(
+log
+⁡
+Γ
+i
+​
+j
+−
+1
+)
+,
+where 
+ε
+>
+0
+ is a regularization parameter that controls the entropy of the resulting transport plan. Each entry 
+Γ
+i
+​
+j
+∈
+ℝ
+≥
+0
+ denotes the fraction of probability mass assigned to matching persona 
+x
+i
+†
+ with human response 
+y
+j
+, with higher values indicating closer alignment.
+
+We define the marginals 
+𝐚
+†
+∈
+ℝ
+N
+†
+ and 
+𝐛
+∈
+ℝ
+M
+ as uniform distributions over the candidate personas and the real human samples, respectively:
+
+(7)		
+𝐚
+†
+=
+1
+N
+†
+​
+𝟏
+N
+†
+,
+𝐛
+=
+1
+M
+​
+𝟏
+M
+,
+where 
+N
+†
+ is the number of candidate personas after importance sampling, and 
+M
+ is the number of empirical human response vectors from survey data. Here, 
+𝟏
+M
+∈
+ℝ
+M
+ and 
+𝟏
+N
+†
+∈
+ℝ
+N
+†
+ are vectors of all ones. Given these marginals, the feasible set 
+Π
+​
+(
+𝐚
+†
+,
+𝐛
+)
+ enforces marginal constraints on the transport plan:
+
+(8)		
+Π
+​
+(
+𝐚
+†
+,
+𝐛
+)
+=
+{
+Γ
+∈
+ℝ
+≥
+0
+N
+†
+×
+M
+|
+Γ
+​
+𝟏
+M
+=
+𝐚
+†
+,
+Γ
+⊤
+​
+𝟏
+N
+†
+=
+𝐛
+}
+.
+The constraint 
+Γ
+​
+𝟏
+M
+=
+𝐚
+†
+ ensures that each persona distributes its probability mass across all human samples, while 
+Γ
+⊤
+​
+𝟏
+N
+†
+=
+𝐛
+ ensures that each human sample receives the correct total mass.
+
+To solve the OT problem efficiently, we employ the Sinkhorn-Knopp iterative algorithm. Specifically, we first define the Gibbs kernel 
+K
+∈
+ℝ
+N
+†
+×
+M
+ by exponentiating the negative normalized cost matrix:
+
+(9)		
+K
+i
+​
+j
+=
+exp
+⁡
+(
+−
+C
+i
+​
+j
+ε
+)
+,
+where each 
+K
+i
+​
+j
+ represents the unnormalized probability mass assigned to transporting from persona 
+i
+ to human 
+j
+, inversely weighted by the cost. Let 
+u
+∈
+ℝ
+N
+†
+ and 
+v
+∈
+ℝ
+M
+ be scaling vectors that normalize rows and columns of the transport plan, respectively. The iterative updates are:
+
+(10)		
+u
+←
+𝐚
+†
+K
+​
+v
+,
+v
+←
+𝐛
+K
+⊤
+​
+u
+,
+where 
+K
+​
+v
+ denotes matrix-vector multiplication, yielding a vector in 
+ℝ
+N
+†
+ whose 
+i
+-th element is 
+∑
+j
+K
+i
+​
+j
+​
+v
+j
+, and similarly 
+K
+⊤
+​
+u
+∈
+ℝ
+M
+ denotes the column-wise normalization step. These updates ensure that the resulting plan 
+Γ
+ satisfies the marginal constraints. At convergence, we obtain the optimal transport plan 
+Γ
+⋆
+ as:
+
+(11)		
+Γ
+⋆
+=
+diag
+​
+(
+u
+)
+⋅
+K
+⋅
+diag
+​
+(
+v
+)
+,
+where 
+diag
+​
+(
+u
+)
+ and 
+diag
+​
+(
+v
+)
+ denote diagonal matrices with 
+u
+ and 
+v
+ on their diagonals, respectively. Finally, we compute a cost-aware OT importance weight for each candidate persona 
+x
+i
+†
+ by taking the expected transport cost under 
+Γ
+⋆
+ and mapping it through a temperature-controlled exponential:
+
+(12)		
+a
+i
+†
+=
+∑
+j
+=
+1
+M
+Γ
+i
+​
+j
+⋆
+,
+w
+i
+OT
+=
+exp
+⁡
+(
+−
+1
+τ
+​
+a
+i
+†
+​
+∑
+j
+=
+1
+M
+Γ
+i
+​
+j
+⋆
+​
+C
+i
+​
+j
+)
+,
+where 
+τ
+>
+0
+ is a temperature hyperparameter. After normalization, we sample the final aligned subset 
+𝒫
+′
+⊆
+𝒫
+†
+ of size 
+N
+′
+:
+
+(13)		
+π
+i
+OT
+=
+w
+i
+OT
+∑
+k
+=
+1
+N
+†
+w
+k
+OT
+,
+𝒫
+′
+∼
+Multinomial
+​
+(
+N
+′
+,
+{
+π
+i
+OT
+}
+i
+=
+1
+N
+†
+)
+.
+This stage ensures fine-grained alignment with human distributions by weighting prompt importance and applying optimal transport for precise persona selection.
+
+Discussion.  Beyond empirical results, we establish finite‑sample guarantees showing that our two‑stage procedure provably recovers the target human distribution. In particular, we bound (i) the Wasserstein‑2 error introduced by the KDE‑based importance sampling stage and (ii) the additional 
+O
+​
+(
+ε
+)
+ bias from the entropic OT refinement. These results imply that the resampled persona distribution converges to the human distribution at a rate that scales with the sample size and kernel bandwidth, providing formal support for the population‑level fidelity of our method. Complete theorem statements and proofs are deferred to Appendix G.
+
+3.3.Group-specific Persona Set Construction
+To support adaptive construction of group-specific persona subsets, we train a dedicated embedding model that embeds natural language queries and personas into a shared semantic space. For training data construction, we prompt a LLM 1 to generate descriptive queries from each persona 
+p
+i
+∈
+𝒫
+′
+:
+
+(14)		
+q
+i
+=
+LLM
+​
+(
+p
+i
+)
+,
+where each 
+q
+i
+ is a natural language description semantically aligned with 
+p
+i
+. These 
+(
+q
+i
+,
+p
+i
+)
+ pairs serve as positive samples. To construct negative samples, we first compute similarity between 
+q
+i
+ and all other personas, and select the top-
+N
+ most similar candidates. We also sample 
+N
+ random personas. Since both the top-
+N
+ most similar candidates and the 
+N
+ randomly sampled personas may contain false negatives (i.e., personas that actually match the query), we further use an LLM to filter out any candidates that are semantically aligned with the query. The embedding model is trained using following loss:
+
+(15)		
+ℒ
+=
+−
+log
+⁡
+exp
+⁡
+(
+sim
+​
+(
+e
+q
+,
+e
+p
++
+)
+)
+exp
+⁡
+(
+sim
+​
+(
+e
+q
+,
+e
+p
++
+)
+)
++
+∑
+p
+−
+exp
+⁡
+(
+sim
+​
+(
+e
+q
+,
+e
+p
+−
+)
+)
+,
+where 
+e
+q
+ and 
+e
+p
+ are the embeddings of the query and persona respectively, and 
+sim
+​
+(
+⋅
+,
+⋅
+)
+ denotes cosine similarity.
+
+At inference time, given a user query 
+q
+ (e.g., “first-year college students in the United States”), we compute its embedding 
+e
+q
+=
+Embed
+​
+(
+q
+)
+ and measure similarity against all persona embeddings 
+{
+e
+i
+}
+ in 
+𝒫
+′
+. We then select the top-
+K
+ most similar personas based on cosine similarity to form a seed subset 
+𝒫
+seed
+​
+(
+q
+)
+. This subset provides semantically relevant exemplars for further persona generation. To generate high-fidelity group-specific personas, we prompt a backbone LLM using the original query and the retrieved seed subset. Specifically, we format the input as a concatenation of 
+q
+ and the selected personas in 
+𝒫
+seed
+​
+(
+q
+)
+, and generate new samples as follows:
+
+(16)		
+𝒫
+group
+​
+(
+q
+)
+=
+LLM
+​
+(
+q
+∥
+𝒫
+seed
+​
+(
+q
+)
+)
+.
+The resulting set 
+𝒫
+group
+​
+(
+q
+)
+ aligns with user intent, making it applicable to downstream social simulations constrained by specific demographic or behavioral parameters.
+
+Table 1. In-domain alignment results on the IPIP Big Five dataset across three base models across four metrics Lower is better for all metrics. The minimum value in each column is highlighted in bold.
+Model Base	Qwen2.5-72B	Llama-3-70B	Phi-4	Avg.
+AMW	FD	SW	MMD	AMW	FD	SW	MMD	AMW	FD	SW	MMD	
+Without
+Persona
+  	DAns (temp=0)	0.4111	1.4256	0.4112	0.8631	0.6469	3.4211	0.6962	2.1904	0.4560	1.7358	0.4602	1.1207	1.1532
+DAns (temp=0.7)	0.3860	1.2309	0.3742	0.6969	0.6271	3.0539	0.6611	1.8805	0.3909	1.3098	0.3960	0.8257	0.9861
+DAns (temp=1)	0.3687	1.0947	0.3560	0.6250	0.5946	2.9176	0.6422	1.7867	0.3731	1.1475	0.3744	0.7294	0.9175
+With
+Persona
+  	SyncP (Qwen2.5-72B)	0.2639	0.5854	0.2792	0.3193	0.3124	0.8279	0.3102	0.4749	0.3284	0.8232	0.3541	0.4282	0.4423
+SyncP (Llama-3-70B)	0.2759	0.5832	0.2679	0.3392	0.3996	0.8307	0.3472	0.4421	0.3336	0.8268	0.3383	0.4886	0.4561
+SyncP (Phi-4)	0.2850	0.7975	0.3363	0.4316	0.3884	1.1620	0.4011	0.7135	0.3357	0.9425	0.3609	0.5767	0.5609
+SyncP (GPT-4-o)	0.2467	0.5824	0.2679	0.2701	0.3523	0.7263	0.3387	0.4476	0.3249	0.7500	0.3175	0.4147	0.4199
+Tulu-3-Persona	0.2821	0.8400	0.3250	0.4631	0.3276	0.9418	0.3512	0.5941	0.2814	0.6412	0.2788	0.3593	0.4738
+Bavard	0.3069	0.7838	0.3174	0.4669	0.3173	0.6659	0.3476	0.3758	0.1877	0.3759	0.2028	0.2414	0.3825
+Google Synthetic	0.3135	0.8081	0.3246	0.4880	0.2983	0.6715	0.3286	0.3684	0.1878	0.3729	0.2027	0.2394	0.3837
+AlignX	0.3416	0.9393	0.3567	0.5606	0.3319	0.6772	0.3274	0.3481	0.1641	0.3215	0.2163	0.2306	0.4013
+Nvidia Nemotron	0.2645	0.8316	0.3199	0.4414	0.3615	0.8005	0.3177	0.4497	0.2233	0.5119	0.2412	0.2421	0.4171
+PersonalHub	0.2982	0.9167	0.3436	0.5303	0.3365	0.8011	0.3268	0.5001	0.2469	0.5620	0.2609	0.3112	0.4529
+Ours	Raw	0.2178	0.4430	0.2246	0.2315	0.2528	0.5597	0.2688	0.3302	0.1181	0.2373	0.1429	0.0689	0.2580
+RandomSelect	0.2178	0.4416	0.2249	0.2311	0.2523	0.5595	0.2699	0.3291	0.1190	0.2366	0.1430	0.0680	0.2577
+Resample	0.1527	0.2628	0.1272	0.0840	0.2013	0.4036	0.1955	0.1937	0.0889	0.1911	0.1214	0.0353	0.1715
+ 
+4.Experiments Setup
+Implementation Details. In Section 3.3, we set 
+N
+=
+10
+. For both Section 4.1 and Section 4.2, we adopt a unified setup. In the Without Persona setting, each base model answers the questionnaire directly under three temperature settings (0.0, 0.7, 1.0), generating 5,000 times per temperature. In the With Persona setting, all persona sets are standardized to 5,000 personas. For SyncP-type methods (e.g., SyncP (GPT-4-o)), we generate 5,000 personas using GPT-4-o at temperature 1.0. For public sets (Tulu-3-Persona (Lambert et al., 2024), Bavard (Zhang et al., 2018a), Google Synthetic (Jandaghi et al., 2023), AlignX (Li et al., 2025), Nvidia Nemotron (Meyer and Corneil, 2025), and PersonalHub (Chan et al., 2024)), we randomly sample 5,000 personas from each. Our methods, Ours (RandomSelect) and Ours (Resample), also use 5,000 personas drawn from our high-quality seed pool, with Resample applying the full alignment pipeline described in Section 3.2. The experimental setup in Section 4.3 follows the same in-domain configuration as described in Section 4.1. The embedding model used in Section 4.4 is Qwen3-Embedding-0.6B (Zhang et al., 2025a).
+
+Baselines. To evaluate the effectiveness of our framework, we compare against two categories of baselines: Without Persona and With Persona. The Without Persona setting uses a LLM to answer tasks directly without any persona conditioning, serving as a reference for understanding the impact of persona guidance. We include DAns under three temperature settings, temp=0, 0.7, and 1 to capture the effect of sampling variability. The With Persona category incorporates persona-augmented prompting. We first consider SyncP, which generates personas using the corresponding model; for example, SyncP (GPT-4-o) denotes personas generated by GPT-4-o at temperature 1. In addition to SyncP, we incorporate several widely adopted, publicly available persona sets as baselines: Tulu-3-Persona (Lambert et al., 2024), Bavard (Zhang et al., 2018a), Google Synthetic (Jandaghi et al., 2023), AlignX (Li et al., 2025), Nvidia Nemotron (Meyer and Corneil, 2025), and PersonalHub (Chan et al., 2024). To assess the impact of our alignment pipeline, we introduce two variants of our method. Ours (Raw) uses the full persona set from Section 3.1 without any sampling. Based on this pool, Ours (RandomSelect) randomly samples a subset matching the size of other baselines, serving as a size-controlled reference. Ours (Resample) applies our full pipeline in Section 3.2 to select a distributionally aligned subset of the same size. This setup allows us to isolate the effect of alignment from data source and sample size. In Section 4.4, we further evaluate two additional group-specific variants. Ours (EM w/o train) retrieves from Ours (Resample) using an untrained embedding model, while Ours (EM w train) uses a contrastively trained embedding model to retrieve semantically relevant personas. The embedding model is trained with positive and filtered hard-negative pairs (see Section 3.3).
+
+Evaluation Datasets. This paper using six different psychometric tests: the IPIP Big Five psychometric test (International Personality Item Pool, [n. d.]), CFCS (Strathman et al., 1994), FBPS (OpenPsychometrics.org, 2019), Duckworth (Duckworth et al., 2007), WVS (Inglehart et al., 2020), and YRBSS (Centers for Disease Control and Prevention, 2019). Detailed descriptions are provided in Appendix B.2.
+
+Evaluation Metrics. To comprehensively evaluate the quality of LLM-based social simulation, we adopt two complementary classes of metrics that assess both distribution-level and response-level fidelity. For population-level alignment, we compare the overall distributions between synthetic and human responses using four standard metrics: Averaged Monotonic Wasserstein (AMW) (Villani et al., 2008; Wang et al., 2024a), Fréchet Distance (FD) (Veeramacheneni et al., 2023; Jayasumana et al., 2024), Sliced Wasserstein Distance (SW) (Nguyen and Ho, 2022; Lobashev et al., 2025), and Maximum Mean Discrepancy (MMD) (Kalinke et al., 2022; Ren et al., 2025), which capture discrepancies across both marginal and joint distributions. For individual-level consistency, we compute Pearson correlation coefficients across all trait pairs and report the mean absolute error (MAE) between synthetic and human correlations, following (pea, [n. d.]; Pratelli and Petrocchi, 2025). Formal definitions of all metrics are provided in Appendix D.
+
+Table 2.Out-of-domain alignment results on CFCS, FBPS, and Duckworth datasets across four metrics Lower is better for all metrics. The minimum value in each column is highlighted in bold.
+CFCS	FBPS	Duckworth	Avg.
+AMW	FD	SW	MMD	AMW	FD	SW	MMD	AMW	FD	SW	MMD	
+AlignX	0.2189	0.0697	0.2189	0.1091	0.3527	1.0808	0.3122	0.5710	0.4083	0.4333	1.2429	0.7111	0.4774
+Tulu-3-Persona	0.2755	0.0826	0.2755	0.1450	0.2418	0.4849	0.2716	0.2564	0.3838	0.4009	0.7533	0.5815	0.3461
+Bavard	0.2415	0.0870	0.2415	0.1171	0.2773	0.6788	0.2545	0.3717	0.3048	0.3052	0.7038	0.4301	0.3344
+Google Synthetic	0.2563	0.0972	0.2563	0.1320	0.2857	0.7112	0.2648	0.3985	0.3141	0.3122	0.7295	0.4524	0.3509
+Nvidia Nemotron	0.2514	0.1029	0.2514	0.1178	0.2595	0.9599	0.2817	0.5387	0.2970	0.4054	1.1136	0.6837	0.4386
+SyncP (GPT-4-o)	0.3258	0.1591	0.3258	0.2043	0.3066	0.9925	0.3054	0.5456	0.3287	0.3573	0.8842	0.5241	0.4383
+PersonalHub	0.2099	0.0975	0.2099	0.0885	0.2453	0.6068	0.2286	0.3075	0.3236	0.3664	0.9190	0.5443	0.3456
+Ours (Resample)	0.1640	0.0303	0.1648	0.0565	0.2149	0.4004	0.1814	0.2005	0.2340	0.2235	0.3860	0.2453	0.2085
+ 
+4.1.Population Level
+In-domain results.
+Table 1 reports in-domain alignment results across three open-source LLMs: Qwen2.5-72B, Llama-3-70B, and Phi-4. The task evaluates how closely model outputs match human Big Five trait distributions from the IPIP inventory, which also serves as the reference distribution in our alignment pipeline. In the Without Persona setting, increasing the sampling temperature from 0 to 1 improves alignment across all models-for instance, FD on Qwen2.5-72B drops from 1.43 to 1.09, indicating that decoding randomness introduces more human-like variation. However, even at optimal temperature, these settings perform far worse than persona-conditioned baselines, underscoring the limitations of unconstrained generation. All With Persona baselines yield substantial improvements. Public persona sets (e.g., Tulu-3-Persona, AlignX, PersonalHub) moderately reduce alignment error, while SyncP variants (e.g., GPT-4-o-generated personas) perform comparably but do not consistently surpass hand-crafted sets. These gains confirm the value of personas, but also reveal persistent mismatches with population-level ground truth, highlighting the limits of naive persona generation. Our proposed framework delivers the strongest and most consistent alignment across all models. The Resample variant-built via our full pipeline of importance sampling and optimal transport-achieves the lowest average error in every case, reducing alignment error by 49.8% on Qwen2.5-72B (vs. SyncP), 37.9% on Llama-3-70B (vs. Google Synthetic), and 45.1% on Phi-4 (vs. AlignX). These consistent gains validate the effectiveness of our alignment strategy across architectures. Even our unaligned variants (Raw and RandomSelect) outperform most public persona sets, demonstrating the strength of our seed pool. Their near-identical performance also confirms that the gains from Resample stem from distributional alignment rather than sample size effects.
+
+Out-of-domain results.
+Table 2 presents the population-level alignment results on three psychological instruments, CFCS (Strathman et al., 1994), FBPS (OpenPsychometrics.org, 2019), and Duwo i.e., Duckworth (Duckworth et al., 2007), that were not used during persona construction. Despite measuring distinct constructs, these datasets share an important property: they are all built on globally distributed human responses, covering 143, 168, and 110 countries respectively. This aligns well with the IPIP Big Five inventory used in our alignment process, which spans one million individuals across 223 countries and serves as a proxy for global human trait distribution. Across all three tasks and four evaluation metrics (AMW, FD, SW, MED), Resample achieves the lowest average divergence (0.2279), outperforming the strongest baseline (Bavard, 0.3344) by 32%. On FBPS our method reduces the Fréchet Distance to 0.4220, substantially outperforming Tulu-3-Persona (0.4849), Google Synthetic (0.7112), and SyncP (GPT-4-o) (0.9925). The additional gains from the alignment process validate the necessity of principled population-level sampling in constructing accurate and transferable persona sets.
+
+Table 3. MAEcorr between human and synthetic inter-trait correlations. Lower values indicate better individual-level consistency. The minimum value in each column is highlighted in bold.
+Method	BIG5	CFCS	FBPS	Duwo	Avg.
+AlignX	0.5761	0.7944	0.5078	0.5688	0.6118
+Tulu-3-Persona	0.4971	1.0521	0.4017	0.4970	0.6120
+Bavard	0.4528	0.4066	0.4268	0.4559	0.4355
+Google Synthetic	0.4570	0.4382	0.4168	0.4571	0.4423
+Nvidia Nemotron	0.8000	1.1935	0.6894	0.8075	0.8726
+SyncP (GPT-4-o)	1.0412	1.2794	0.9289	1.0443	1.0735
+PersonalHub	0.6547	0.9334	0.5045	0.6564	0.6873
+Ours (Resample)	0.4108	0.2270	0.3607	0.4255	0.3560
+ 
+4.2.Individual‑Level Behavioral Consistency
+Beyond matching trait distributions, realistic simulation must preserve the internal structure of personality traits (Wang et al., 2024c). We evaluate this using mean absolute error (MAEcorr) between pairwise Pearson correlations in human vs. synthetic data (see Section 4). Table 3 reports results across four instruments: IPIP Big Five (International Personality Item Pool, [n. d.]), CFCS (Strathman et al., 1994), FBPS (OpenPsychometrics.org, 2019), and Duckworth (Duckworth et al., 2007). Our proposed Resample method consistently achieves the strongest performance, producing personas whose inter-trait correlations most closely mirror those of real human populations. It attains the lowest error on every instrument, with an overall MAEcorr of 0.3651, outperforming the strongest prior baseline (Bavard, 0.4355) by 16.2%, and surpassing commonly used sets like AlignX (0.6118) and Tulu-3-Persona (0.6120). These results demonstrate that our alignment pipeline sharpens individual-level consistency, not just population-level fit. Similarly, we observe that the full two-stage alignment procedure provides clear improvements even over our own high-quality seed pool.
+
+Table 4.Performance of group-specific persona generation across datasets and regions. Lower is better for all metrics. The minimum value in each column is highlighted in bold.
+YRBSS	WVS (East Asia)	WVS (North America)	WVS (Western Europe)	Avg.
+AMW	FD	SW	MMD	AMW	FD	SW	MMD	AMW	FD	SW	MMD	AMW	FD	SW	MMD	
+AlignX	0.4676	9.7132	0.5679	2.0409	0.8274	21.0512	0.8712	2.4598	0.8785	20.4461	0.8914	2.4495	0.8595	23.4058	0.8576	2.0302	5.6136
+Tulu-3-Persona	0.4921	9.0356	0.7252	1.9259	0.9282	23.2265	0.9343	2.6507	0.8498	20.8217	0.8976	2.6438	0.9485	26.8801	0.9615	2.3601	6.0176
+Bavard	0.4569	9.0103	0.5558	1.8776	0.8153	22.7143	0.8190	2.1368	0.8489	20.3607	0.8730	2.4311	0.8991	24.8798	0.8593	1.9787	5.7198
+Google Synthetic	0.4716	9.0975	0.5500	1.8997	0.8197	21.5079	0.8443	2.2662	0.8412	22.6565	0.8757	2.6811	0.8818	24.8154	0.8667	1.9872	5.8164
+Nvidia Nemotron	0.5052	10.9920	0.6999	2.2383	0.8845	24.7850	0.8990	2.6935	0.8687	20.2640	0.8733	2.4560	0.8793	26.9882	0.8832	2.1464	6.1910
+SyncP (GPT-4-o)	0.5473	11.5000	0.7013	2.4586	0.9706	31.6886	0.9890	3.4136	0.8183	22.5895	0.8881	2.4783	1.0129	31.3838	1.0204	3.0113	7.2170
+PersonalHub	0.4834	9.9214	0.6021	2.1532	0.8144	22.8832	0.8262	2.2022	0.8204	21.1220	0.8551	2.7758	0.8678	24.9372	0.8577	1.9928	5.8822
+Ours (EM w/o train)	0.2940	2.5384	0.3338	0.7464	0.8011	20.6770	0.8032	2.1235	0.7957	20.1950	0.8386	2.2835	0.8286	22.0073	0.8362	1.8213	4.8702
+Ours (EM w train)	0.2819	2.4790	0.3173	0.7324	0.7713	19.4662	0.7758	1.9500	0.7694	17.5770	0.7764	1.7992	0.7858	21.5000	0.8108	1.7339	4.5329
+ 
+Refer to caption
+Figure 3. Scatter plots comparing the distribution of EXT and EST scores between real human responses (blue) and LLM-generated outputs (orange) across nine settings.
+4.3.Trait-Space Visualization
+To complement our quantitative analysis, we provide a qualitative visualization of personality trait coverage. Following the same in-domain setup as in Section 4.1, we plot the joint distribution over two representative Big Five traits: Extraversion (EXT) and Emotional Stability (EST). Figure 3 shows scatter plots of 1,000 samples per setting across nine representative conditions, where the 
+x
+-axis denotes EXT and the 
+y
+-axis denotes EST. Blue points represent real human responses; orange points denote LLM outputs. Each subplot is labeled with the corresponding method. In the Temp = 0 setting (bottom right), all responses collapse to a single point due to deterministic decoding. Increasing temperature to 1 adds some dispersion, but the outputs remain narrowly clustered, failing to reflect real-world variability. This shows that sampling alone is insufficient for simulating population-level diversity. Persona-based approaches (e.g., Tulu-3-Persona, Bavard, Google Synthetic) offer modest improvements, with outputs spreading further into trait space and partially overlapping human data. However, coverage remains limited-especially in the lower-EXT and lower-EST regions-indicating insufficient representation of diverse psychological profiles. By contrast, our Ours (Resample) method (top left) yields outputs that closely match the human distribution, covering the full trait space and successfully reaching underrepresented regions. This strongly supports our quantitative findings in Section 4.1, affirming the effectiveness of our two-stage sampling approach. Although our method achieves substantial improvements in trait alignment, the generated distribution still falls short of fully matching real human data, due to inherent model and data biases. Closing this gap remains a key challenge.
+
+4.4.Group-Specific Persona Adaptation
+We assess whether the globally aligned pool 
+𝒫
+′
+ can be adapted to specific demographic targets using two test sets: YRBSS (Centers for Disease Control and Prevention, 2019) and WVS (Inglehart et al., 2020). For each group, we issue a natural-language query (e.g., “Generate a persona from the Hong Kong region”) and retrieve the top-
+K
+ personas from 
+𝒫
+′
+ using an embedding model. Specifically, we use Qwen3-Embedding-0.6B (Zhang et al., 2025a), which maps both queries and personas into a shared semantic space. The corresponding training hyper-parameters and prompt details for the embedding model can be found in Appendix B.4,  B.5 and  B.6. Retrieved personas are then revised using Qwen2.5‑72B‑Instruct to produce 1,000 group-specific personas per setting. We compare three variants: (1) Resample (from Section 3.2); (2) EM w/o train, which retrieves from Resample using an untrained embedding model; and (3) EM w train, our full method with contrastive training. Alignment is evaluated using AMW, FD, SW, and MED, averaged by region. As shown in Table 4, EM w train achieves the lowest errors across all regions and metrics, reducing overall alignment error by 19.1% versus AlignX and 8.9% versus Resample. Even EM w/o train outperforms all external sets, validating the effectiveness of the retrieval approach. A comparison between EM w/o train and EM w train reveals consistent improvements across all baselines and metrics, highlighting that the proposed contrastive training enhances generalization rather than overfitting to a single domain.
+
+5.Conclusion
+We propose a principled framework for constructing population-aligned persona sets for LLM-based social simulation. Existing approaches often focus on individual-level attributes while neglecting population-level distributional fidelity, leading to biased and unrealistic outcomes. Our three-stage pipeline (1) extracts high-quality personas from real-world social media, (2) performs two-stage alignment via importance sampling and optimal transport, and (3) enables group-specific persona generation. Across six different psychometric tests, our method consistently outperforms widely used persona sets in both population alignment and behavioral realism. It generalizes well across psychometric instruments and supports high-fidelity group-specific simulation. These results highlight the importance of distribution-aware persona construction for reliable social modeling. Future work will explore high-order simulations for forecasting social trends and evaluating intervention strategies.
+
+References
+(1)
+pea ([n. d.])
+[n. d.].Pearson correlation coefficient.Wikipedia, accessed 2025‑07‑25.https://en.wikipedia.org/wiki/Pearson_correlation_coefficient“Measures linear correlation… between two sets of data…”.
+Binz et al. (2025)
+Marcel Binz, Elif Akata, Matthias Bethge, Franziska Brändle, Fred Callaway, Julian Coda-Forno, Peter Dayan, Can Demircan, Maria K Eckstein, Noémi Éltető, et al. 2025.A foundation model to predict and capture human cognition.Nature (2025), 1–8.
+Centers for Disease Control and Prevention (2019)
+Centers for Disease Control and Prevention. 2019.Youth Risk Behavior Surveillance System (YRBSS).Online Dataset.https://www.cdc.gov/healthyyouth/data/yrbs/index.htm
+Chan et al. (2024)
+Xin Chan, Xiaoyang Wang, Dian Yu, Haitao Mi, and Dong Yu. 2024.Scaling Synthetic Data Creation with 1,000,000,000 Personas.ArXiv abs/2406.20094 (2024).https://api.semanticscholar.org/CorpusID:270845490
+Chang et al. (2023)
+Yu-Chu Chang, Xu Wang, Jindong Wang, Yuan Wu, Kaijie Zhu, Hao Chen, Linyi Yang, Xiaoyuan Yi, Cunxiang Wang, Yidong Wang, Weirong Ye, Yue Zhang, Yi Chang, Philip S. Yu, Qian Yang, and Xingxu Xie. 2023.A Survey on Evaluation of Large Language Models.ACM Transactions on Intelligent Systems and Technology 15 (2023), 1 – 45.https://api.semanticscholar.org/CorpusID:259360395
+Chen et al. (2024)
+Jiangjie Chen, Xintao Wang, Rui Xu, Siyu Yuan, Yikai Zhang, Wei Shi, Jian Xie, Shuang Li, Ruihan Yang, Tinghui Zhu, Aili Chen, Nianqi Li, Lida Chen, Caiyu Hu, Siye Wu, Scott Ren, Ziquan Fu, and Yanghua Xiao. 2024.From Persona to Personalization: A Survey on Role-Playing Language Agents.Trans. Mach. Learn. Res. 2024 (2024).https://api.semanticscholar.org/CorpusID:269448713
+Chen et al. (2025)
+Yuxin Chen, Peng Tang, Weidong Qiu, and Shujun Li. 2025.Using LLMs for Automated Privacy Policy Analysis: Prompt Engineering, Fine-Tuning and Explainability.ArXiv abs/2503.16516 (2025).https://api.semanticscholar.org/CorpusID:277244132
+Cheng et al. (2023)
+Myra Cheng, Tiziano Piccardi, and Diyi Yang. 2023.CoMPosT: Characterizing and Evaluating Caricature in LLM Simulations.ArXiv abs/2310.11501 (2023).https://api.semanticscholar.org/CorpusID:264288848
+Chhikara et al. (2024)
+Garima Chhikara, Anurag Sharma, Kripabandhu Ghosh, and Abhijnan Chakraborty. 2024.Few-Shot Fairness: Unveiling LLM’s Potential for Fairness-Aware Classification.ArXiv abs/2402.18502 (2024).https://api.semanticscholar.org/CorpusID:268041522
+Chuang et al. (2023a)
+Yun-Shiuan Chuang, Agam Goyal, Nikunj Harlalka, Siddharth Suresh, Robert Hawkins, Sijia Yang, Dhavan Shah, Junjie Hu, and Timothy T. Rogers. 2023a.Simulating Opinion Dynamics with Networks of LLM-based Agents. In NAACL-HLT.https://api.semanticscholar.org/CorpusID:265220960
+Chuang et al. (2023b)
+Yun-Shiuan Chuang, Siddharth Suresh, Nikunj Harlalka, Agam Goyal, Robert Hawkins, Sijia Yang, Dhavan Shah, Junjie Hu, and Timothy T. Rogers. 2023b.Evaluating LLM Agent Group Dynamics against Human Group Dynamics: A Case Study on Wisdom of Partisan Crowds.ArXiv abs/2311.09665 (2023).https://api.semanticscholar.org/CorpusID:275357913
+Ding et al. (2023)
+Junyuan Ding, Xiaoliang Chen, Peng Lu, Zaiyan Yang, Xianyong Li, and Yajun Du. 2023.DialogueINAB: an interaction neural network based on attitudes and behaviors of interlocutors for dialogue emotion recognition.The Journal of Supercomputing 79 (2023), 20481 – 20514.https://api.semanticscholar.org/CorpusID:259422404
+Dong et al. (2025)
+Harry Dong, Bilge Acun, Beidi Chen, and Yuejie Chi. 2025.Scalable LLM Math Reasoning Acceleration with Low-rank Distillation.ArXiv abs/2505.07861 (2025).https://api.semanticscholar.org/CorpusID:278535523
+Duckworth et al. (2007)
+Angela L. Duckworth, Christopher Peterson, Michael D. Matthews, and Dennis R. Kelly. 2007.Grit: Perseverance and Passion for Long-Term Goals.Journal of Personality and Social Psychology 92, 6 (2007), 1087–1101.doi:10.1037/0022-3514.92.6.1087
+Fournier and Guillin (2015)
+Nicolas Fournier and Arnaud Guillin. 2015.On the rate of convergence in Wasserstein distance of the empirical measure.Probability theory and related fields 162, 3 (2015), 707–738.
+Fulay and Roy (2025)
+Suyash Pradeep Fulay and Deb Roy. 2025.The Empty Chair: Using LLMs to Raise Missing Perspectives in Policy Deliberations.ArXiv abs/2503.13812 (2025).https://api.semanticscholar.org/CorpusID:277103981
+Gallegos et al. (2023)
+Isabel O. Gallegos, Ryan A. Rossi, Joe Barrow, Md. Mehrab Tanjim, Sungchul Kim, Franck Dernoncourt, Tong Yu, Ruiyi Zhang, and Nesreen Ahmed. 2023.Bias and Fairness in Large Language Models: A Survey.Computational Linguistics 50 (2023), 1097–1179.https://api.semanticscholar.org/CorpusID:261530629
+Gandhi et al. (2023)
+Kanishk Gandhi, Jan-Philipp Fränken, Tobias Gerstenberg, and Noah Goodman. 2023.Understanding social reasoning in language models with language models.Advances in Neural Information Processing Systems 36 (2023), 13518–13529.
+Gao et al. (2023)
+Chen Gao, Xiaochong Lan, Zhi jie Lu, Jinzhu Mao, Jing Piao, Huandong Wang, Depeng Jin, and Yong Li. 2023.S3: Social-network Simulation System with Large Language Model-Empowered Agents.ArXiv abs/2307.14984 (2023).https://api.semanticscholar.org/CorpusID:260202947
+Goldberg (1992)
+Lewis R Goldberg. 1992.The development of markers for the Big-Five factor structure.Psychological assessment 4, 1 (1992), 26.
+Han et al. (2024)
+Tingxu Han, Zhenting Wang, Chunrong Fang, Shiyun Zhao, Shiqing Ma, and Zhenyu Chen. 2024.Token-Budget-Aware LLM Reasoning.ArXiv abs/2412.18547 (2024).https://api.semanticscholar.org/CorpusID:274992044
+Hong et al. (2023)
+Sirui Hong, Xiawu Zheng, Jonathan P. Chen, Yuheng Cheng, Ceyao Zhang, Zili Wang, Steven Ka Shing Yau, Zi Hen Lin, Liyang Zhou, Chenyu Ran, Lingfeng Xiao, and Chenglin Wu. 2023.MetaGPT: Meta Programming for Multi-Agent Collaborative Framework.ArXiv abs/2308.00352 (2023).https://api.semanticscholar.org/CorpusID:260351380
+Hu et al. (2025)
+Tianrui Hu, Dimitrios Liakopoulos, Xiwen Wei, Radu Marculescu, and Neeraja Jayant Yadwadkar. 2025.Simulating Rumor Spreading in Social Networks using LLM Agents.ArXiv abs/2502.01450 (2025).https://api.semanticscholar.org/CorpusID:276107205
+Huang et al. (2024)
+Xu Huang, Weiwen Liu, Xiaolong Chen, Xingmei Wang, Hao Wang, Defu Lian, Yasheng Wang, Ruiming Tang, and Enhong Chen. 2024.Understanding the planning of LLM agents: A survey.ArXiv abs/2402.02716 (2024).https://api.semanticscholar.org/CorpusID:267411892
+Inglehart et al. (2020)
+Ronald Inglehart, Christian Haerpfer, Ana Moreno, Christian Welzel, Katerina Kizilova, Juan Diez-Medrano, Max Lagos, Pippa Norris, Eduard Ponarin, and Boris Puranen. 2020.World Values Survey: Wave 7 Country-Pooled Datafile.Online Dataset.http://www.worldvaluessurvey.org/WVSDocumentationWV7.jsp
+International Personality Item Pool ([n. d.])
+International Personality Item Pool. [n. d.].Possible Questionnaire Format for Administering the 50-Item Set of IPIP Big-Five Factor Markers.https://ipip.ori.org/new_ipip-50-item-scale.htm.
+Jandaghi et al. (2023)
+Pegah Jandaghi, XiangHai Sheng, Xinyi Bai, Jay Pujara, and Hakim Sidahmed. 2023.Faithful Persona-based Conversational Dataset Generation with Large Language Models.ArXiv abs/2312.10007 (2023).https://api.semanticscholar.org/CorpusID:266335707
+Jayasumana et al. (2024)
+Sadeep Jayasumana, Srikumar Ramalingam, Andreas Veit, Daniel Glasner, Ayan Chakrabarti, and Sanjiv Kumar. 2024.Rethinking fid: Towards a better evaluation metric for image generation. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. 9307–9315.
+Ju et al. (2025)
+Chenlu Ju, Jiaxin Liu, Shobhit Sinha, Hao Xue, and Flora D. Salim. 2025.TrajLLM: A Modular LLM-Enhanced Agent-Based Framework for Realistic Human Trajectory Simulation.Companion Proceedings of the ACM on Web Conference 2025 (2025).https://api.semanticscholar.org/CorpusID:276617707
+Kalinke et al. (2022)
+Florian Kalinke, Marco Heyden, Georg Gntuni, Edouard Fouché, and Klemens Böhm. 2022.Maximum mean discrepancy on exponential windows for online change detection.arXiv preprint arXiv:2205.12706 (2022).
+Karvonen and Marks (2025)
+Adam Karvonen and Samuel Marks. 2025.Robustly Improving LLM Fairness in Realistic Settings via Interpretability.ArXiv abs/2506.10922 (2025).https://api.semanticscholar.org/CorpusID:279318319
+Kaur et al. (2025)
+Arshnoor Kaur, Amanda Aird, Harris Borman, Andrea Nicastro, Anna Leontjeva, Luiz Pizzato, and Dan Jermyn. 2025.Synthetic Voices: Evaluating the Fidelity of LLM-Generated Personas in Representing People’s Financial Wellbeing.Proceedings of the 33rd ACM Conference on User Modeling, Adaptation and Personalization (2025).https://api.semanticscholar.org/CorpusID:279323112
+Kim et al. (2024)
+Dongjun Kim, Minhyuk Kim, YongChan Chun, Chanjun Park, and Heu-Jeoung Lim. 2024.Exploring Coding Spot: Understanding Parametric Contributions to LLM Coding Performance.ArXiv abs/2412.07113 (2024).https://api.semanticscholar.org/CorpusID:274610697
+Kong et al. (2023)
+Aobo Kong, Shiwan Zhao, Hao Chen, Qicheng Li, Yong Qin, Ruiqi Sun, and Xiaoxia Zhou. 2023.Better Zero-Shot Reasoning with Role-Play Prompting. In North American Chapter of the Association for Computational Linguistics.https://api.semanticscholar.org/CorpusID:260900230
+Lambert et al. (2024)
+Nathan Lambert, Jacob Daniel Morrison, Valentina Pyatkin, Shengyi Huang, Hamish Ivison, Faeze Brahman, Lester James Validad Miranda, Alisa Liu, Nouha Dziri, Xinxi Lyu, Yuling Gu, Saumya Malik, Victoria Graf, Jena D. Hwang, Jiangjiang Yang, Ronan Le Bras, Oyvind Tafjord, Chris Wilhelm, Luca Soldaini, Noah A. Smith, Yizhong Wang, Pradeep Dasigi, and Hanna Hajishirzi. 2024.TÜLU 3: Pushing Frontiers in Open Language Model Post-Training.ArXiv abs/2411.15124 (2024).https://api.semanticscholar.org/CorpusID:274192505
+Lee et al. (2024)
+Seongyun Lee, Sue Hyun Park, Seungone Kim, and Minjoon Seo. 2024.Aligning to Thousands of Preferences via System Message Generalization.ArXiv abs/2405.17977 (2024).https://api.semanticscholar.org/CorpusID:270067579
+Li et al. (2016)
+Jiwei Li, Michel Galley, Chris Brockett, Georgios P. Spithourakis, Jianfeng Gao, and William B. Dolan. 2016.A Persona-Based Neural Conversation Model.ArXiv abs/1603.06155 (2016).https://api.semanticscholar.org/CorpusID:2955580
+Li et al. (2025)
+Jia-Nan Li, Jian Guan, Songhao Wu, Wei Wu, and Rui Yan. 2025.From 1,000,000 Users to Every User: Scaling Up Personalized Preference for User-level Alignment.ArXiv abs/2503.15463 (2025).https://api.semanticscholar.org/CorpusID:277113478
+Li et al. (2024)
+Yuanchun Li, Hao Wen, Weijun Wang, Xiangyu Li, Yizhen Yuan, Guohong Liu, Jiacheng Liu, Wenxing Xu, Xiang Wang, Yi Sun, Rui Kong, Yile Wang, Hanfei Geng, Jian Luan, Xuefeng Jin, Zi-Liang Ye, Guanjing Xiong, Fan Zhang, Xiang Li, Mengwei Xu, Zhijun Li, Peng Li, Yang Liu, Yaqiong Zhang, and Yunxin Liu. 2024.Personal LLM Agents: Insights and Survey about the Capability, Efficiency and Security.ArXiv abs/2401.05459 (2024).https://api.semanticscholar.org/CorpusID:266933252
+Lobashev et al. (2025)
+Alexander Lobashev, Maria Larchenko, and Dmitry Guskov. 2025.Color Conditional Generation with Sliced Wasserstein Guidance.arXiv preprint arXiv:2503.19034 (2025).
+Lu et al. (2024)
+Keming Lu, Bowen Yu, Chang Zhou, and Jingren Zhou. 2024.Large Language Models are Superpositions of All Characters: Attaining Arbitrary Role-play via Self-Alignment.ArXiv abs/2401.12474 (2024).https://api.semanticscholar.org/CorpusID:267095369
+Lu et al. (2025)
+Yi-Long Lu, Chunhui Zhang, Jiajun Song, Lifeng Fan, and Wei Wang. 2025.Tom-rl: Reinforcement learning unlocks theory of mind in small llms.arXiv e-prints (2025), arXiv–2504.
+Meyer and Corneil (2025)
+Yev Meyer and Dane Corneil. 2025.Nemotron-Personas: Synthetic Personas Aligned to Real-World Distributions.https://huggingface.co/datasets/nvidia/Nemotron-Personas
+Ng et al. (2024)
+Man Tik Ng, Hui Tung Tse, Jen-Tse Huang, Jingjing Li, Wenxuan Wang, and Michael R. Lyu. 2024.How Well Can LLMs Echo Us? Evaluating AI Chatbots’ Role-Play Ability with ECHO.ArXiv abs/2404.13957 (2024).https://api.semanticscholar.org/CorpusID:269293628
+Nguyen and Ho (2022)
+Khai Nguyen and Nhat Ho. 2022.Revisiting sliced Wasserstein on images: From vectorization to convolution.Advances in Neural Information Processing Systems 35 (2022), 17788–17801.
+Nguyen et al. (2024)
+Thuy Ngoc Nguyen, Kasturi Jamale, and Cleotilde Gonzalez. 2024.Predicting and Understanding Human Action Decisions: Insights from Large Language Models and Cognitive Instance-Based Learning.ArXiv abs/2407.09281 (2024).https://api.semanticscholar.org/CorpusID:271162342
+Open-Source Psychometrics Project ([n. d.])
+Open-Source Psychometrics Project. [n. d.].Big Five Personality Test using the IPIP Big-Five Factor Markers.https://openpsychometrics.org/tests/IPIP-BFFM/.
+OpenPsychometrics.org (2019)
+OpenPsychometrics.org. 2019.Firstborn Personality Scale Responses.Online.https://openpsychometrics.org/tests/birthorder/development/
+Park et al. (2023)
+Joon Sung Park, Joseph C. O’Brien, Carrie J. Cai, Meredith Ringel Morris, Percy Liang, and Michael S. Bernstein. 2023.Generative Agents: Interactive Simulacra of Human Behavior.Proceedings of the 36th Annual ACM Symposium on User Interface Software and Technology (2023).https://api.semanticscholar.org/CorpusID:258040990
+Piao et al. (2025)
+Jing Piao, Zhihong Lu, Chen Gao, Fengli Xu, Fernando P. Santos, Yong Li, and James Evans. 2025.Emergence of human-like polarization among large language model agents.ArXiv abs/2501.05171 (2025).https://api.semanticscholar.org/CorpusID:275405906
+Pratelli and Petrocchi (2025)
+Manuel Pratelli and Marinella Petrocchi. 2025.Evaluating the Simulation of Human Personality-Driven Susceptibility to Misinformation with LLMs.arXiv preprint arXiv:2506.23610 (2025).
+Ren et al. (2025)
+Jiyuan Ren, Zhaocheng Du, Zhihao Wen, Qinglin Jia, Sunhao Dai, Chuhan Wu, and Zhenhua Dong. 2025.Few-shot LLM Synthetic Data with Distribution Matching. In Companion Proceedings of the ACM on Web Conference 2025. 432–441.
+Samuel et al. (2024)
+Vinay Samuel, Henry Peng Zou, Yue Zhou, Shreyas Chaudhari, A. Kalyan, Tanmay Rajpurohit, A. Deshpande, Karthik Narasimhan, and Vishvak Murahari. 2024.PersonaGym: Evaluating Persona Agents and LLMs.ArXiv abs/2407.18416 (2024).https://api.semanticscholar.org/CorpusID:271516477
+Schler et al. (2006)
+Jonathan Schler, Moshe Koppel, Shlomo Argamon, and James W Pennebaker. 2006.Effects of age and gender on blogging.. In AAAI spring symposium: Computational approaches to analyzing weblogs, Vol. 6. 199–205.
+Sethi et al. (2025)
+Sankalp Sethi, Joni O. Salminen, Danial Amin, and Bernard J. Jansen. 2025.”When AI Writes Personas”: Analyzing Lexical Diversity in LLM-Generated Persona Descriptions.Proceedings of the Extended Abstracts of the CHI Conference on Human Factors in Computing Systems (2025).https://api.semanticscholar.org/CorpusID:278048270
+Setlur et al. (2024)
+Amrith Rajagopal Setlur, Saurabh Garg, Xinyang Geng, Naman Garg, Virginia Smith, and Aviral Kumar. 2024.RL on Incorrect Synthetic Data Scales the Efficiency of LLM Math Reasoning by Eight-Fold.ArXiv abs/2406.14532 (2024).https://api.semanticscholar.org/CorpusID:270620658
+Shao et al. (2023)
+Yunfan Shao, Linyang Li, Junqi Dai, and Xipeng Qiu. 2023.Character-LLM: A Trainable Agent for Role-Playing.ArXiv abs/2310.10158 (2023).https://api.semanticscholar.org/CorpusID:264145862
+Song et al. (2024)
+Yunpeng Song, Jiawei Li, Yiheng Bian, and Zhongmin Cai. 2024.Predicting User Behavior in Smart Spaces with LLM-Enhanced Logs and Personalized Prompts. In AAAI Conference on Artificial Intelligence.https://api.semanticscholar.org/CorpusID:274789599
+Strachan et al. (2024)
+James WA Strachan, Dalila Albergo, Giulia Borghini, Oriana Pansardi, Eugenio Scaliti, Saurabh Gupta, Krati Saxena, Alessandro Rufo, Stefano Panzeri, Guido Manzi, et al. 2024.Testing theory of mind in large language models and humans.Nature Human Behaviour 8, 7 (2024), 1285–1295.
+Strathman et al. (1994)
+Alan Strathman, Faye Gleicher, David S. Boninger, and Charles S. Edwards. 1994.The Consideration of Future Consequences: Weighing Immediate and Distant Outcomes of Behavior.Journal of Personality and Social Psychology 66, 4 (1994), 742–752.doi:10.1037/0022-3514.66.4.742
+Street et al. (2024)
+Winnie Street, John Oliver Siy, Geoff Keeling, Adrien Baranes, Benjamin Barnett, Michael McKibben, Tatenda Kanyere, Alison Lentz, Robin IM Dunbar, et al. 2024.Llms achieve adult human performance on higher-order theory of mind tasks.arXiv preprint arXiv:2405.18870 (2024).
+Tsybakov (2008)
+A. Tsybakov. 2008.Introduction to Nonparametric Estimation. In Springer Series in Statistics.https://api.semanticscholar.org/CorpusID:42933599
+Tu et al. (2024)
+Quan Tu, Shilong Fan, Zihang Tian, and Rui Yan. 2024.CharacterEval: A Chinese Benchmark for Role-Playing Conversational Agent Evaluation. In Annual Meeting of the Association for Computational Linguistics.https://api.semanticscholar.org/CorpusID:266725287
+Veeramacheneni et al. (2023)
+Lokesh Veeramacheneni, Moritz Wolter, Hildegard Kuehne, and Juergen Gall. 2023.Fr
+\
+’echet Wavelet Distance: A Domain-Agnostic Metric for Image Generation.arXiv preprint arXiv:2312.15289 (2023).
+Villani et al. (2008)
+Cédric Villani et al. 2008.Optimal transport: old and new. Vol. 338.Springer.
+Wang et al. (2024a)
+Jie Wang, March Boedihardjo, and Yao Xie. 2024a.Statistical and computational guarantees of kernel max-sliced wasserstein distances.arXiv preprint arXiv:2405.15441 (2024).
+Wang et al. (2025a)
+Lei Wang, Heyang Gao, Xiaohe Bo, Xu Chen, and Ji-Rong Wen. 2025a.Yulan-onesim: Towards the next generation of social simulator with large language models.arXiv preprint arXiv:2505.07581 (2025).
+Wang et al. (2025c)
+Pengda Wang, Huiqi Zou, Hanjie Chen, Tianjun Sun, Ziang Xiao, and Frederick L Oswald. 2025c.Personality Structured Interview for Large Language Model Simulation in Personality Research.arXiv preprint arXiv:2502.12109 (2025).
+Wang et al. (2024c)
+Pengda Wang, Huiqi Zou, Zihan Yan, Feng Guo, Tianjun Sun, Ziang Xiao, and Bo Zhang. 2024c.Not yet: Large language models cannot replace human respondents for psychometric research.OSF Preprint: https://doi. org/10.31219/osf. io/rwy9b (2024).
+Wang et al. (2025b)
+Tianfu Wang, Yi Zhan, Jianxun Lian, Zhengyu Hu, Nicholas Jing Yuan, Qi Zhang, Xing Xie, and Hui Xiong. 2025b.LLM-powered Multi-agent Framework for Goal-oriented Learning in Intelligent Tutoring System.Companion Proceedings of the ACM on Web Conference 2025 (2025).https://api.semanticscholar.org/CorpusID:275920775
+Wang et al. (2024b)
+Yiding Wang, Yuxuan Chen, Fangwei Zhong, Long Ma, and Yizhou Wang. 2024b.Simulating Human-like Daily Activities with Desire-driven Autonomy.ArXiv abs/2412.06435 (2024).https://api.semanticscholar.org/CorpusID:274598179
+Wang et al. (2023)
+Zhenhailong Wang, Shaoguang Mao, Wenshan Wu, Tao Ge, Furu Wei, and Heng Ji. 2023.Unleashing the Emergent Cognitive Synergy in Large Language Models: A Task-Solving Agent through Multi-Persona Self-Collaboration. In North American Chapter of the Association for Computational Linguistics.https://api.semanticscholar.org/CorpusID:259765919
+Wu et al. (2025)
+Zengqing Wu, Run Peng, Takayuki Ito, and Chuan Xiao. 2025.LLM-Based Social Simulations Require a Boundary.arXiv preprint arXiv:2506.19806 (2025).
+Xie et al. (2024)
+Chengxing Xie, Canyu Chen, Feiran Jia, Ziyu Ye, Shiyang Lai, Kai Shu, Adel Bibi, Ziniu Hu, Philip H. S. Torr, Bernard Ghanem, and G. Li. 2024.Can Large Language Model Agents Simulate Human Trust Behaviors?ArXiv abs/2402.04559 (2024).https://api.semanticscholar.org/CorpusID:267523076
+Xie et al. (2025)
+Yutong Xie, Zhuoheng Li, Xiyuan Wang, Yijun Pan, Qijia Liu, Xingzhi Cui, Kuang-Yu Lo, Ruoyi Gao, Xingjian Zhang, Jin Huang, Walter Yuan, Matthew O Jackson, and Qiaozhu Mei. 2025.Be.FM: Open Foundation Models for Human Behavior.ArXiv abs/2505.23058 (2025).https://api.semanticscholar.org/CorpusID:278996237
+Yu et al. (2025)
+Pengfei Yu, Dongming Shen, Silin Meng, Jaewon Lee, Weisu Yin, Andrea Yaoyun Cui, Zhenlin Xu, Yi Zhu, Xingjian Shi, Mu Li, and Alex Smola. 2025.RPGBENCH: Evaluating Large Language Models as Role-Playing Game Engines.ArXiv abs/2502.00595 (2025).https://api.semanticscholar.org/CorpusID:276094751
+Yuan et al. (2024)
+Lifan Yuan, Ganqu Cui, Hanbin Wang, Ning Ding, Xingyao Wang, Jia Deng, Boji Shan, Huimin Chen, Ruobing Xie, Yankai Lin, Zhenghao Liu, Bowen Zhou, Hao Peng, Zhiyuan Liu, and Maosong Sun. 2024.Advancing LLM Reasoning Generalists with Preference Trees.ArXiv abs/2404.02078 (2024).https://api.semanticscholar.org/CorpusID:268856805
+Zeng et al. (2025)
+Binqi Zeng, Quan Zhang, Chijin Zhou, Gwihwan Go, Yu Jiang, and Heyuan Shi. 2025.Inducing Vulnerable Code Generation in LLM Coding Assistants.ArXiv abs/2504.15867 (2025).https://api.semanticscholar.org/CorpusID:277994061
+Zhang (2024)
+Jiarui Zhang. 2024.Guided Profile Generation Improves Personalization with LLMs.ArXiv abs/2409.13093 (2024).https://api.semanticscholar.org/CorpusID:272770339
+Zhang et al. (2018a)
+Saizheng Zhang, Emily Dinan, Jack Urbanek, Arthur Szlam, Douwe Kiela, and Jason Weston. 2018a.Personalizing dialogue agents: I have a dog, do you have pets too?arXiv preprint arXiv:1801.07243 (2018).
+Zhang et al. (2018b)
+Saizheng Zhang, Emily Dinan, Jack Urbanek, Arthur Szlam, Douwe Kiela, and Jason Weston. 2018b.Personalizing Dialogue Agents: I have a dog, do you have pets too?ArXiv abs/1801.07243 (2018).https://api.semanticscholar.org/CorpusID:6869582
+Zhang et al. (2025c)
+Xinnong Zhang, Jiayu Lin, Xinyi Mou, Shiyue Yang, Xiawei Liu, Libo Sun, Hanjia Lyu, Yihang Yang, Weihong Qi, Yue Chen, et al. 2025c.Socioverse: A world model for social simulation powered by llm agents and a pool of 10 million real-world users.arXiv preprint arXiv:2504.10157 (2025).
+Zhang et al. (2025a)
+Yanzhao Zhang, Mingxin Li, Dingkun Long, Xin Zhang, Huan Lin, Baosong Yang, Pengjun Xie, An Yang, Dayiheng Liu, Junyang Lin, Fei Huang, and Jingren Zhou. 2025a.Qwen3 Embedding: Advancing Text Embedding and Reranking Through Foundation Models.arXiv preprint arXiv:2506.05176 (2025).
+Zhang et al. (2025b)
+Zeyu Zhang, Jianxun Lian, Chen Ma, Yaning Qu, Ye Luo, Lei Wang, Rui Li, Xu Chen, Yankai Lin, Le Wu, Xing Xie, and Ji-Rong Wen. 2025b.TrendSim: Simulating Trending Topics in Social Media Under Poisoning Attacks with LLM-based Multi-agent System. In Findings of the Association for Computational Linguistics: NAACL 2025, Albuquerque, New Mexico, USA, April 29 - May 4, 2025, Luis Chiruzzo, Alan Ritter, and Lu Wang (Eds.). Association for Computational Linguistics, 2930–2949.doi:10.18653/V1/2025.FINDINGS-NAACL.160
+Zhou et al. (2023)
+Pei Zhou, Aman Madaan, Srividya Pranavi Potharaju, Aditya Gupta, Kevin R McKee, Ari Holtzman, Jay Pujara, Xiang Ren, Swaroop Mishra, Aida Nematzadeh, et al. 2023.How far are large language models from agents with theory-of-mind?arXiv preprint arXiv:2310.03051 (2023).
+Appendix ANotation
+Table 5 and Table 6 summarize the notations used in our paper. Part I corresponds to Section 3.1. Part II and Part III correspond to Stage 1 and Stage 2 of Section 3.2, respectively. Part IV corresponds to Section 3.3.
+
+Table 5.Summary of notation (A): Seed mining, LLM responses, and KDE-based Importance Sampling.
+Symbol	Description
+Part I: Basic objects & LLM-induced responses
+𝒫
+=
+{
+p
+i
+}
+i
+=
+1
+N
+Set of textual personas (Sec. 3.1)
+N
+Number of personas in 
+𝒫
+s
+Aggregated long-form user text (concatenated posts)
+𝒢
+LLM persona summarizer mapping 
+s
+↦
+p
+i
+p
+i
+=
+𝒢
+​
+(
+s
+)
+Narrative persona synthesized from 
+s
+𝒬
+=
+{
+q
+k
+}
+k
+=
+1
+d
+Psychometric items (e.g., IPIP Big Five)
+d
+Number of items / response dimension
+LLM	Frozen LLM mapping 
+(
+p
+i
+,
+q
+k
+)
+ to a scalar response
+∥
+Textual concatenation operator
+x
+i
+​
+k
+Model response to 
+(
+p
+i
+,
+q
+k
+)
+x
+i
+∈
+ℝ
+d
+Response vector for persona 
+p
+i
+X
+∈
+ℝ
+N
+×
+d
+Persona response matrix with rows 
+x
+i
+Y
+=
+{
+y
+j
+}
+j
+=
+1
+M
+Human response vectors from surveys
+M
+Number of human response samples
+r
+persona
+Empirical distribution of 
+{
+x
+i
+}
+i
+=
+1
+N
+r
+human
+Empirical distribution of 
+{
+y
+j
+}
+j
+=
+1
+M
+Part II: KDE-based Importance Sampling
+h
+Bandwidth parameter for KDE
+I
+Identity matrix
+𝒩
+​
+(
+z
+;
+h
+2
+​
+I
+)
+Multivariate Gaussian kernel density
+r
+^
+persona
+KDE estimate of 
+r
+persona
+r
+^
+human
+KDE estimate of 
+r
+human
+w
+i
+IS
+IS weight: 
+r
+^
+human
+​
+(
+x
+i
+)
+/
+r
+^
+persona
+​
+(
+x
+i
+)
+π
+i
+IS sampling probability for 
+p
+i
+ (normalized 
+w
+i
+IS
+)
+N
+†
+Number of candidates sampled by IS
+𝒫
+†
+Candidate persona subset after IS
+X
+†
+Response vectors of 
+𝒫
+†
+Table 6.Summary of notation (B): Entropic OT alignment and Group-specific construction.
+Symbol	Description
+Part III: Optimal Transport alignment
+ω
+k
+Item weight for prompt 
+q
+k
+C
+∈
+ℝ
+N
+†
+×
+M
+Cost matrix, 
+C
+i
+​
+j
+=
+∑
+k
+ω
+k
+​
+(
+x
+i
+​
+k
+†
+−
+y
+j
+​
+k
+)
+2
+ε
+Entropic regularization parameter in OT
+𝐚
+†
+,
+𝐛
+Uniform marginals on candidates / human samples
+𝟏
+n
+All-ones vector of length 
+n
+Π
+​
+(
+𝐚
+†
+,
+𝐛
+)
+Feasible couplings with given marginals
+⟨
+C
+,
+Γ
+⟩
+Frobenius inner product 
+∑
+i
+​
+j
+C
+i
+​
+j
+​
+Γ
+i
+​
+j
+K
+Gibbs kernel: 
+K
+i
+​
+j
+=
+exp
+⁡
+(
+−
+C
+i
+​
+j
+/
+ε
+)
+u
+,
+v
+Sinkhorn scaling vectors
+Γ
+,
+Γ
+⋆
+Transport plan / optimal plan
+diag
+⁡
+(
+⋅
+)
+Diagonal matrix formed from a vector
+w
+i
+OT
+OT-derived weight for 
+x
+i
+†
+π
+i
+OT
+Sampling probability induced by 
+w
+i
+OT
+N
+′
+Final number of personas sampled after OT
+𝒫
+′
+Final population-aligned persona subset
+W
+2
+​
+(
+⋅
+,
+⋅
+)
+2-Wasserstein distance
+Part IV: Group-specific retrieval & generation
+q
+Natural-language group/query
+Embed
+​
+(
+⋅
+)
+Learned embedding model for queries/personas
+e
+q
+,
+e
+i
+,
+e
+p
+Embeddings of 
+q
+, persona 
+p
+i
+, and a generic persona
+sim
+​
+(
+⋅
+,
+⋅
+)
+Cosine similarity between embeddings
+K
+ret
+Top-
+K
+ retrieval size (distinct from OT kernel 
+K
+)
+𝒫
+seed
+​
+(
+q
+)
+Retrieved seed personas for 
+q
+𝒫
+group
+​
+(
+q
+)
+Generated group-specific personas conditioned on seeds
+e
+p
++
+Positive persona embedding in contrastive loss
+p
+−
+Negative personas in contrastive loss
+ℒ
+Contrastive loss: 
+−
+log
+⁡
+e
+sim
+​
+(
+e
+q
+,
+e
+p
++
+)
+e
+sim
+​
+(
+e
+q
+,
+e
+p
++
+)
++
+∑
+p
+−
+e
+sim
+​
+(
+e
+q
+,
+e
+p
+−
+)
+Appendix BFurther Implementation Details
+B.1.Experimental Setup
+All experiments were conducted on a high-performance computing server equipped with eight NVIDIA A100 GPUs, each with 40 GB of memory. The models referenced in the main text correspond to specific checkpoints available on HuggingFace: for Llama-3-70B, we use meta-llama/Meta-Llama-3-70B-Instruct2; for Qwen2.5-72B, we use Qwen/Qwen2.5-72B-Instruct3; and for Phi-4, we use microsoft/phi-44. Our seed persona mining pipeline draws from three open-source datasets. The blog data is based on the Blog Authorship Corpus5, which includes entries from over 30000 users. For population-level persona sampling via Importance Sampling and Optimal Transport (Section 3.2), we apply a Gaussian KDE with bandwidth 0.20 and retain the 70% of candidate personas with the highest importance weights. OT weights are computed in batches of size 10,000 with entropic regularization 
+ε
+=
+0.08
+ (scaled to the median cost). The Sinkhorn algorithm is run for 250 iterations. Finally, for embedding model training, we follow the SWIFT recipe from the Qwen3-Embedding repository, available at this link6.
+
+B.2.Datasets
+PIP Big Five psychometric test (International Personality Item Pool, [n. d.]). The Big Five Inventory consists of 50 self‑descriptive statements (e.g., ”I see myself as someone who is talkative”) rated on a 5-point Likert scale. It quantifies five broad personality dimensions-Openness, Conscientiousness, Extraversion, Agreeableness, and Neuroticism-providing stable trait profiles. The instrument is used to predict outcomes in areas such as job performance, relationship quality, and health behaviors, and to examine correlations between personality and cognitive, emotional, or social variables.
+
+CFCS (Strathman et al., 1994). The Consideration of Future Consequences Scale (CFCS) is a 12‑item self‑report instrument rated on a 5‑point Likert scale designed to quantify individual differences in the extent to which people consider distant versus immediate outcomes of their actions. The CFCS score predicts a wide range of real‑world behaviors, such as health maintenance, financial planning, environmental stewardship, and academic persistence, making it a versatile benchmark for assessing temporal orientation and decision‑making dynamics in both clinical and applied research contexts.
+
+FBPS (OpenPsychometrics.org, 2019). The Firstborn Personality Scale is a 25-item measure designed to capture personality traits statistically associated with being firstborn, without explicitly referencing birth order. The items reflect a profile marked by intellectual engagement, verbal interests, competitiveness, assertiveness, and cognitive intensity-traits such as enjoying complex reading, using advanced vocabulary, following politics, and striving to outdo others. Developed through large-sample analysis, the FBPS offers a concise snapshot of a driven, literate, and analytically minded personality style.
+
+Duckworth. (Duckworth et al., 2007). The Duckworth Grit Scale assesses perseverance and passion for long‑term goals through 12 self‑report items (e.g., ”I finish whatever I begin,” ”Setbacks don’t discourage me”), providing a validated measure of sustained effort and consistency of interest. In this paper, Duckworth serves as a self‑regulation benchmark to verify that our persona alignment method captures realistic distributions of grit and motivational persistence .
+
+WVS  (Inglehart et al., 2020). The World Values Survey administers 200-300 questions on political attitudes, social norms, religious beliefs, and subjective well‑being (e.g., ”Overall, how happy are you?”) across over 100 countries every 5-10 years. It tracks longitudinal changes in values related to democracy, gender roles, economic security, and quality of life. WVS supports comparative research in sociology, political science, and international development.
+
+YRBSS (Centers for Disease Control and Prevention, 2019). Conducted by the CDC, YRBSS collects data on health-risk behaviors among U.S. high school students. Topics include tobacco/alcohol/drug use, sexual activity, mental health (e.g., suicidality), nutrition, physical activity, and violence exposure. The goal is to monitor trends and inform public health interventions targeting adolescents.
+
+Table 7.Statistics of psychometric and behavioral survey datasets used for alignment and evaluation.
+Dataset	# Questions	 
+# Human
+Responses
+# Countries
+and Regions
+Big Five (IPIP)	50	1,015,341	224
+CFCS	12	15,034	144
+FBPS	76	41,841	169
+Duckworth	50	4,270	111
+YRBSS	105	20,103	1
+WVS (Full)	294	97,221	66
+WVS – East Asia	250	11,593	7
+WVS – North America	250	8,355	3
+WVS – Europe	250	6,282	3
+B.3.Dataset Statistics
+Table 7 summarizes all datasets used in our study. For the World Values Survey (WVS), we construct three regional subsets to evaluate the Group-Specific Persona Adaptation module, as described in Section 4.4. These subsets correspond to the full set of countries available within each target region in the WVS dataset: East Asia, including China, Japan, South Korea, Hong Kong, Mongolia, Taiwan, and Macao; North America, including Canada, United States, and Mexico; and Europe, including Germany, Netherlands, and United Kingdom.
+
+B.4.Query Generation from Personas for Embedding Training
+Motivation. To construct positive (query, persona) pairs for the contrastive encoder (§3.3), we automatically derive two natural language queries from each persona 
+p
+i
+∈
+𝒫
+′
+. The first is a detailed query that captures fine-grained persona traits, and the second is a broad query that summarizes only high-level characteristics. We generate both queries using LLM prompting, with one prompt designed for detailed descriptions (see Prompt 1) and another for coarse-grained abstractions (see Prompt 2). Each query is paired with the original persona for training the embedding model using the contrastive objective defined in Eq. 15.
+
+Listing 1: Prompt for detailed (long) query generation
+You are a helpful assistant tasked with generating queries based on detailed persona descriptions.
+Your goal is to generate concise queries that describe the key traits of the persona, such as age, gender,
+emotional tone, and significant interests or lifestyle. The query should be specific but short, capturing the
+persona’s core characteristics without going into excessive detail.
+Persona: "The user is a young, likely female, living in a town she affectionately calls ’peach town’, working
+multiple jobs, including one at a gym and another at a cleaners, and values relaxation and enjoyment of simple
+pleasures, like good food and sunny days, while navigating life’s changes and emotional ups and downs with an
+introspective and slightly moody tone."
+Generated query: "Generate a young female persona who works multiple jobs, values relaxation and simple pleasures,
+and has an introspective and slightly moody tone."
+Your generated query should capture the persona’s essential traits in a clear and concise manner, avoiding
+unnecessary complexity.
+Only return the generated query, nothing else.
+Based on the following persona description, generate a concise query that describes a persona with similar traits
+and characteristics. Focus on the persona’s key traits like age, gender, emotional tone, and major activities or
+interests, keeping the query short and to the point.
+Persona description:
+{persona}
+Generated query:
+Only return the generated query, nothing else.
+Listing 2: Prompt for broad (short) query generation
+You are a helpful assistant tasked with generating broader queries based on persona descriptions.
+Your goal is to generate simple and concise queries that describe the basic traits of the persona, such as age,
+gender, and general interests or activities. The query should be high-level, focusing on the core attributes, and
+should be short without diving into personal or emotional details.
+Persona: "The user is a young, likely female, living in a town she affectionately calls ’peach town’, working
+multiple jobs, including one at a gym and another at a cleaners, and values relaxation and enjoyment of simple
+pleasures, like good food and sunny days, while navigating life’s changes and emotional ups and downs with an
+introspective and slightly moody tone."
+Generated query: "Generate a young female persona who works multiple jobs."
+Your generated query should focus on broad characteristics and general interests, and should be brief without
+over-explaining.
+Only return the generated query, nothing else.
+Based on the following persona description, generate a broad, concise query that describes a persona with similar
+traits and characteristics. Focus on the basic attributes such as age, gender, and major interests or lifestyle,
+keeping the query short and general.
+Persona description:
+{persona}
+Generated query:
+Only return the generated query, nothing else.
+Training usage. For each persona we generate one detailed query with Prompt 1 and one broad query with Prompt 2. Both are encoded and paired with the same persona embedding in the contrastive loss of Eq. (15), while hard negatives are mined as described in the main text. Full tuning hyper-parameter details are provided in Table 8.
+
+Table 8.Contrastive embedding model fine-tuning hyper-parameters.
+Hyper-parameter	Assignment
+Number of epochs	2
+Batch size per device	4
+Gradient accumulation	4
+Effective batch size	32
+Learning rate	6e-6
+Precision	FP16
+Optimizer	Deepspeed (ZeRO-3)
+ 
+ 
+B.5.LLM-based Filtering of Semantically Matched Negatives
+To improve the quality of negative sampling during training (§3.3), we apply an additional filtering step to eliminate false negatives personas that are semantically aligned with the query but incorrectly treated as negatives. Specifically, for each query 
+q
+i
+, we examine two sets of candidate negatives: the top-
+N
+ most similar personas (in embedding space) and 
+N
+ randomly sampled personas. Both sets may contain cases that match the query, so we prompt a large language model to verify alignment. Given a query-persona pair 
+(
+q
+i
+,
+p
+~
+)
+, the LLM is asked to return a strict binary response: YES if the persona clearly matches the query, and NO otherwise. Only those pairs labeled NO are retained as valid negatives. The prompt template used for this filtering step is shown in Prompt 3.
+
+Listing 3: Prompt for LLM-based semantic match filtering
+You are an expert evaluator tasked with determining whether a user persona matches a given query or description.
+Your job is to carefully analyze if the persona accurately represents someone who would be described by the query. Consider:
+Key characteristics mentioned in the query
+Interests, behaviors, and preferences
+Demographics if mentioned
+Overall alignment between query and persona
+Respond with ONLY "YES" if the persona matches the query, or "NO" if it doesn’t match.
+Be strict in your evaluation - only respond "YES" if there is a clear and strong alignment.
+Query: Generate a crafty individual who values convenience and quality, frequently purchases art and sewing supplies, and enjoys DIY projects.
+Persona: The user is a crafty individual who values quality and functionality, often purchasing items for themselves and as gifts for others, including artists and sewers, indicating a supportive and generous nature, with a keen interest in sewing, drawing, and art supplies.
+Does this persona match the query? Respond with only "YES" or "NO".
+B.6.Prompts for Group-Specific Persona Adaptation
+Prompt Details. We adapt personas from the globally aligned pool 
+𝒫
+′
+ to region- or group-specific targets by prompting an LLM to revise a seed persona under task-specific constraints. For each downstream setting—YRBSS (U.S. adolescents), WVS East (e.g., Hong Kong), WVS Europe (e.g., Germany), and WVS North America (e.g., United States). These prompts guide the LLM to generate new personas aligned with the sociocultural context of the target region. The complete prompt templates for these settings are shown in Prompt 4, Prompt 5, Prompt 6, and Prompt 7, respectively.
+
+Listing 4: YRBSS case study prompt
+You create realistic U.S. high-school student personas (age 14-18) for an adolescent health survey. Produce one paragraph within 80 words describing their demographics, home/school life, diet & activity, sexual behavior, substance use, mental health, and safety experiences, all internally consistent and plausible. Do not mention the survey or these instructions.
+Seed persona: {seed persona}
+Based on the above requirements, generate the concise paragraph persona. Suitable for the adolescent health survey task.
+OUTPUT:
+Listing 5: WVS East (Hong Kong) case study prompt
+You are a specialist in constructing high-fidelity social-simulation personas for the World Values Survey (WVS). Transform a seed persona into a coherent, richly detailed character. The new persona’s demographics, socio-economic situation, core values, social and political attitudes, ethical views, and well-being must be internally consistent and sufficient for answering every WVS item. Output a concise single paragraph. Ensure every detail could plausibly appear in real WVS data. Do not mention these instructions, WVS, or questionnaires in your response.
+Seed Persona:
+{seed persona}
+Refinement Instruction:
+Transform the seed to be a persona from Hong Kong with a worldview, social trust level, and cultural identity representative of the general populace.
+Your Task:
+Generate a new, single-paragraph persona based on the core traits of the Seed Persona, but strictly conforming to the Refinement Instruction. The new persona must align with the country and specific attributes mentioned in the Refinement Instruction, even if the Seed Persona is from a different background. The result should be a natural, plausible character description.
+OUTPUT:
+Listing 6: WVS Europe (Germany) case study prompt
+You are a specialist in constructing high-fidelity social-simulation personas for the World Values Survey (WVS). Transform a seed persona into a coherent, richly detailed character. The new persona’s demographics, socio-economic situation, core values, social and political attitudes, ethical views, and well-being must be internally consistent and sufficient for answering every WVS item. Output a concise single paragraph. Ensure every detail could plausibly appear in real WVS data. Do not mention these instructions, WVS, or questionnaires in your response.
+Seed Persona:
+{seed persona}
+Refinement Instruction:
+Transform the seed to be a persona from Germany with typical views on family life, work-life balance, and social welfare.
+Your Task:
+Generate a new, single-paragraph persona based on the core traits of the Seed Persona, but strictly conforming to the Refinement Instruction. The new persona must align with the country and specific attributes mentioned in the Refinement Instruction, even if the Seed Persona is from a different background. The result should be a natural, plausible character description.
+OUTPUT:
+Listing 7: WVS North America (U.S.) case study prompt
+You are a specialist in constructing high-fidelity social-simulation personas for the World Values Survey (WVS). Transform a seed persona into a coherent, richly detailed character. The new persona’s demographics, socio-economic situation, core values, social and political attitudes, ethical views, and well-being must be internally consistent and sufficient for answering every WVS item. Output a concise single paragraph. Ensure every detail could plausibly appear in real WVS data. Do not mention these instructions, WVS, or questionnaires in your response.
+Seed Persona:
+{seed persona}
+Refinement Instruction:
+Transform the seed to be a persona from the United States with mainstream perspectives on national identity, civic engagement, and social justice.
+Your Task:
+Generate a new, single-paragraph persona based on the core traits of the Seed Persona, but strictly conforming to the Refinement Instruction. The new persona must align with the country and specific attributes mentioned in the Refinement Instruction, even if the Seed Persona is from a different background. The result should be a natural, plausible character description.
+OUTPUT:
+Case Studies. We illustrate the group-specific persona construction process through four case studies, each comprising a raw seed persona and its LLM-generated output persona after adaptation to the target setting. These outputs follow the prompts detailed in Table 9.
+
+Table 9.Examples of seed personas and their LLM-generated outputs across different demographic adaptation tasks. Each output persona reflects the cultural, behavioral, and social context of the respective group.
+Setting
+ 	
+Seed Persona
+Output Persona
+YRBSS (U.S. teens)
+ 	
+The user is a young adult, likely female, living in Penticton, Canada, who values a healthy lifestyle and strives to maintain an active routine, often starting her day with yoga, walks, or other exercises, despite facing challenges with energy and motivation, particularly due to her early work schedule and occasional injuries.
+Alex, 16, lives in a suburban area of California with her parents and younger brother. She is a junior at a public high school, where she excels in academics and is on the track team. Alex starts her day with a 30-minute jog and eats a balanced diet. She has had minor injuries but stays committed to fitness. She is a virgin, avoids substances, and manages stress through journaling and talking to friends.
+WVS East (Hong Kong)
+ 	
+The user is a young, likely Asian, possibly Chinese, individual who values cultural heritage and identity, is emotional and sentimental, and is openly gay and appreciative of diversity.
+Alex Wong, 28, lives in Hong Kong and works as a graphic designer. He embraces Chinese heritage in his work, is openly gay, and actively supports LGBTQ+ causes. He visits ancestral sites for emotional grounding, participates in community service, and supports democratic reform. He balances sentimentality with a pragmatic mindset.
+WVS Europe (Germany)
+ 	
+The user is a 25-year-old married male, living with his wife, earning $145,000–$160,000 jointly, focused on saving for a house, and values work-life balance.
+Markus, 25, lives in Munich with his wife Lisa. Both work in tech and earn €130,000–€145,000 annually. Markus prioritizes flexible hours and vacation time. They’re saving for a home and planning for children. He supports welfare policies and environmental volunteering, favoring collective well-being over individualism.
+WVS North America (U.S.)
+ 	
+The user is a likely young, liberal-minded individual, possibly American, who values critical thinking and challenges norms, with strong views on justice and social responsibility.
+Emily Thompson, 32, lives in suburban Chicago. A marketing professional and moderate Democrat, she volunteers locally, values civic duty, and supports social justice. She votes regularly, discusses reform topics, and values honesty and responsibility. She is optimistic despite student debt and owns two rescue dogs.
+Appendix CPrivacy De-identification
+Before Stage 2, we insert a lightweight de-identification step to ensure that no sensitive personal information (PII) is exposed when personas are inspected or released. For every persona in the Ours (raw data) reported in Table 1, we first run a GPT-4o PII detector. The detector prompt is shown in Listing 8. The model considers as sensitive any full name, street-level home address, email address, phone number, or bank/credit-card number. Across the corpus, 99.31% of personas are flagged no, indicating that no PII is present. Listing 9 provides an example that triggers a yes response, while Listing 10 illustrates a typical no. For every record flagged yes, we invoke a second prompt (Listing 11) that rewrites the persona by replacing only the sensitive fields with realistic but fictitious values while preserving style and meaning. A de-identified output corresponding to the yes case is presented in Listing 12. We further conducted a human study on all these rewritten yes responses, involving five independent annotators. All cases were verified to have the identified PII correctly removed or substituted, with no observed semantic inconsistencies, indicating the effectiveness of the de-identification process.
+
+Listing 8: PII detection prompt
+You are tasked with checking persona text for sensitive personal information.
+Sensitive items are defined as follows:
+- Full names (at least first and last name together, not just a first name or a generic reference).
+- Home addresses (street-level detail, not just city or country).
+- Email addresses (must contain ’@’ with a valid-looking format).
+- Phone numbers (must contain at least 7 digits, optionally with separators like ’-’, ’()’, or spaces).
+- Bank account or credit card numbers (must contain a sequence of at least 8 digits, e.g., full or partial account numbers).
+Do NOT treat the following as sensitive:
+- Generic mentions of ’phone number’, ’email’, ’credit card’, ’parents’, etc. without specific values.
+- General locations (city, country, region).
+- Public figure names (e.g., celebrities, politicians, authors).
+Instructions:
+1. If you detect any concrete sensitive information as defined above, output only: yes.
+2. If none is found, output only: no.
+Output must be a single word: yes or no.
+Persona text:
+Listing 9: Detector output: yes
+The user is a young, likely married, British mother in her mid-to-late twenties, living with her husband, Mr. Spid, and their young daughter, Baby Spid. She values her relationships and family, but also enjoys her independence, music, and socializing with friends, often expressing herself through sarcastic humor and frustration
+Listing 10: Detector output: no
+The user is a young male, likely in a relationship, who values simplicity and frugality, but also enjoys spending time with his girlfriend and having fun, often finding joy in everyday moments, with a carefree and lighthearted tone, living in the Lower Mainland, possibly in Canada, given the mention of T&T and Tim Horton’s.
+Listing 11: PII rewrite prompt
+You are tasked with de-identifying the given persona text by replacing sensitive items
+with realistic but fictitious substitutes.
+Sensitive items to REPLACE: full names, home addresses, email addresses, phone numbers,
+and bank account numbers.
+Do NOT replace nationality or general location (city, country, region).
+Requirements:
++ Preserve the original style, tone, and intent.
++ Do not leak or partially reveal the original sensitive values.
++ Generate substitutes that look plausible but are fabricated and not traceable to real individuals.
+Listing 12: Rewritten persona (de-identified)
+The user is a young, likely married, British mother in her mid-to-late twenties, living with her husband, Tom Ridley, and their young daughter, Lila Ridley. She values her relationships and family, but also enjoys her independence, music, and socializing with friends, often expressing herself through sarcastic humor and frustration.
+Appendix DMetric Definitions
+In this appendix, we provide formal definitions of the evaluation metrics used in Section 4, covering both population-level alignment and individual-level consistency.
+
+Population-level alignment.
+We compare the distribution of LLM-generated responses with real human responses using four standard metrics:
+
+Averaged Monotonic Wasserstein (AMW) (Villani et al., 2008; Wang et al., 2024a) measures 1D Wasserstein-1 distance across each psychometric trait and averages over all 
+N
+ traits:
+
+(17)		
+AMW
+=
+1
+N
+​
+∑
+t
+=
+1
+N
+∫
+−
+∞
+∞
+|
+F
+P
+t
+​
+(
+x
+)
+−
+F
+Q
+t
+​
+(
+x
+)
+|
+​
+𝑑
+x
+,
+where 
+F
+P
+t
+, 
+F
+Q
+t
+ are empirical CDFs of human and synthetic responses on trait 
+t
+.
+
+Fréchet Distance (FD) (Veeramacheneni et al., 2023; Jayasumana et al., 2024) compares two multivariate Gaussian distributions:
+
+(18)		
+FD
+=
+‖
+μ
+P
+−
+μ
+Q
+‖
+2
+2
++
+Tr
+​
+(
+Σ
+P
++
+Σ
+Q
+−
+2
+​
+(
+Σ
+P
+​
+Σ
+Q
+)
+1
+/
+2
+)
+,
+where 
+μ
+P
+,
+μ
+Q
+ are mean vectors and 
+Σ
+P
+,
+Σ
+Q
+ are covariance matrices of human and synthetic samples.
+
+Sliced Wasserstein Distance (SW) (Nguyen and Ho, 2022; Lobashev et al., 2025) projects high-dimensional samples onto 
+K
+ random directions 
+v
+i
+, then averages 1D Wasserstein distances:
+
+(19)		
+SW
+=
+1
+K
+​
+∑
+i
+=
+1
+K
+W
+1
+​
+(
+⟨
+X
+,
+v
+i
+⟩
+,
+⟨
+Y
+,
+v
+i
+⟩
+)
+,
+where 
+⟨
+⋅
+,
+v
+i
+⟩
+ denotes projection.
+
+Maximum Mean Discrepancy (MMD) (Kalinke et al., 2022; Ren et al., 2025) measures distributional gap in a reproducing kernel Hilbert space (RKHS):
+
+(20)		
+MMD
+=
+‖
+𝔼
+x
+∼
+P
+​
+[
+ϕ
+​
+(
+x
+)
+]
+−
+𝔼
+y
+∼
+Q
+​
+[
+ϕ
+​
+(
+y
+)
+]
+‖
+ℋ
+,
+where 
+ϕ
+ is the kernel mapping and 
+ℋ
+ is the RKHS.
+
+Individual-level consistency.
+To evaluate whether inter-trait correlations are preserved, we compute Pearson correlation coefficients across all 
+N
+ trait pairs from both human and synthetic responses, and report their mean absolute error:
+
+(21)		
+MAE
+corr
+=
+1
+N
+​
+∑
+i
+=
+1
+N
+|
+ρ
+^
+i
+−
+ρ
+i
+human
+|
+,
+where 
+ρ
+i
+human
+ and 
+ρ
+^
+i
+ denote the Pearson correlation coefficient (pea, [n. d.]; Pratelli and Petrocchi, 2025) for the 
+i
+-th trait pair in human and synthetic data, respectively.
+
+Appendix ELimitations
+Our filtering pipeline removes harmful content such as violence, harassment, and privacy violations to ensure persona safety and ethical compliance. However, this may introduce a mild positivity bias, as expressions involving personal adversity or social tension may be underrepresented. This reflects a common trade-off between safety and realism in LLM-based social simulation. Moreover, both our seed corpora and the reference psychometric datasets used for alignment (e.g., the IPIP Big Five inventory (International Personality Item Pool, [n. d.])) are derived from internet-accessible populations. As a result, individuals with limited or no online presence, such as those in rural, elderly, or under-resourced communities, may be underrepresented. It is also an inherent challenge in large-scale population modeling using publicly available digital traces.
+
+Appendix FSeed Persona Mining: Data and Prompts
+Corpora and Scale. We construct the seed persona pool from a large-scale, human-authored corpora that reflect personal narratives and behavioral cues. Specifically, we use the Blog Authorship Corpus, which contains 681K posts and roughly 140 million words from over 19,000 bloggers; Collectively, these corpora capture diverse first-person perspectives spanning various demographics, interests, and socioemotional expressions.
+
+Preprocessing. We design modality-specific filters to remove noise while preserving personal expression. For blogs, we remove segments shorter than 30 tokens or lacking first-person pronouns, which tend to be non-narrative. The remaining texts are passed to Llama-3.3-70B-Instruct with a specialized cleaning prompt (Prompt 13) that removes HTML tags, URLs, non-English snippets, mentions, and other noise while preserving tone and syntax. This step yields approximately 500K blog entries.
+
+Raw Data Quality Control. Each cleaned text is further annotated using Llama-3.3-70B-Instruct via Prompt 14, which assigns: (1) a three-level <quality> tag—high, medium, or low, reflecting narrative depth and relevance to human thought or behavior; and (2) a binary <harmless> tag indicating whether the content avoids sensitive or unethical material (e.g., hate speech, violence, privacy violations). Only texts labeled both high quality and harmless are retained.
+
+Persona Generation. For each retained user, we aggregate their posts and remove authors with fewer than six entries. The remaining user-level documents are concatenated into a single segment 
+s
+ and passed to Llama-3.3-70B-Instruct using Prompt 15, which extracts a narrative persona paragraph. The persona is written in third person and integrates salient demographic, psychological, and behavioral traits, but only if they are explicitly supported by the source text. If the input fails to support persona synthesis, the model outputs NULL to avoid hallucination.
+
+Persona Quality Control. Each generated persona is scored by a critic LLM using the evaluation rubric in Prompt 16. Five dimensions are rated on a 1-10 scale: hallucination (factual grounding), coverage (extent of salient information captured), conciseness and clarity, relevance (exclusion of generic/promotional content), and an overall score. We retain only those personas where the overall score exceeds 8, and each sub-score exceeds 7. This step filters out 27.8% from blogs.
+
+Final Seed Pool. The resulting seed persona pool comprises over 100,000 high-fidelity, diverse narrative personas, spanning a broad spectrum of psychometric and demographic dimensions. These personas serve as the foundation for downstream alignment and targeted generation modules.
+
+Prompts Detail. To ensure reproducibility, we include the full text of all LLM prompts used during the pipeline—cleaning (Prompt 13), quality control (Prompt 14), persona generation (Prompt 15), and persona evaluation (Prompt 16).
+
+Listing 13: Prompt A: rewrite
+You are a text cleaning assistant.
+Your task is to clean a blog post by removing noisy or irrelevant elements while fully preserving the original content’s meaning, sentence structure, punctuation, and tone.
+Apply the following cleaning rules:
+1. Remove truly extraneous characters and encoded text, including:
+- Unicode symbols like \u00a3, \u2026, \u0caa\u0ccd, etc.
+- HTML entities like &amp;, &gt;, #x200B, etc.
+- Repetitive filler patterns like . . ., \n.\n.\n, or similar.
+2. Delete all URLs, including both raw links (https://..., http://...) and markdown-style links ([text](url)).
+3. Remove all hashtags (e.g., #LifeGoals, #AI2024) unless they are clearly essential to the post’s meaning.
+4. Remove all user mentions (e.g., @elonmusk, @user123). If the mention is critical for understanding or its removal breaks the sentence structure, substitute an appropriate placeholder (e.g., "a friend," "the author") based on context.
+5. Strip out emojis, meme-style text, ASCII art, and decorative symbols that do not contribute meaning.
+6. Discard non-English text or phrases only if they are not integrated into natural English usage. Common loanwords or cultural terms (e.g., "sushi," "futbol") should be preserved if they are relevant.
+Important Guidelines:
+- Do not remove or alter meaningful punctuation such as parentheses (), dollar signs $, question marks ?, or exclamation marks ! if used naturally.
+- Do not rephrase, paraphrase, or rewrite any part of the original.
+- Maintain all meaningful sentence boundaries and user expression styles.
+- If a removal creates broken syntax or unclear meaning, minimally repair the sentence to ensure readability without altering the author’s voice.
+- Output the cleaned text only-no explanations or notes.
+Here is the blog post to clean:
+{blog}
+Listing 14: Prompt B: raw data quality control
+You are a helpful assistant that helps me determine the data quality of a blog. The background is that I want to collect blogs which contain human behaviors or human thoughts, so that I can further study social science based on the collected data in the next step. However, as you may know, blogs from the Internet contain various types of content, and many of them are irrelevant to my goal, so I need to filter them out.
+Typically, a blog’s quality is high if it records detailed events of a human, reflects human life, mentions social behaviors, or reveals the author’s thoughts or feelings about something.
+A blog’s quality is medium if it only briefly mentions some content related to human behaviors or thoughts, but lacks enough context to understand a complete story or perspective.
+A blog’s quality is low if it has nothing to do with human behaviors or thoughts, such as ads, job posts, company descriptions, fictional plots, random word dumps, and other irrelevant types. Additionally, a blog is also low quality if it is filled with non-English words, URLs, mentions (e.g., @user), hashtags, special characters (such as Unicode symbols or HTML entities), or emojis, which suggest noise or lack of meaningful personal expression.
+In addition to tagging the quality, please also determine whether the blog is harmless. A blog is considered harmless if it does not contain unethical or sensitive content such as violence, pornography, or privacy violations. If such content exists, the harmless tag should be no; otherwise, it should be yes.
+So your task is to tag the blog in two aspects:
+A quality tag, which can be either "high", "medium", or "low".
+A harmless tag, which can be either "yes" or "no".
+Please output both tags in the following XML format, and do not include any other words or explanations:
+<output><quality>...</quality><harmless>...</harmless></output>
+Below is the user’s blog post:
+{blog}
+Listing 15: Prompt C: persona_generation
+Analyze the provided blog posts to create a concise and vivid user persona in a single cohesive paragraph (no more than 100 words). Seamlessly weave together important aspects of the user’s persona, such as demographics (age, gender, profession, nationality, location, marital status), key personality traits, core values, interests, and emotional tone, only when these aspects are explicitly supported by the raw blogs. Extract persona based on the user’s salient events or thoughts.
+Exclude generic, promotional, or repetitive content in the raw blogs (e.g., product ads, event schedules, technical knowledge re-post).
+Write in third-person (e.g., ’The user is a...’), avoiding lists or bullet points. If the blogs’ content cannot support high-quality persona extraction, simply output "NULL".
+Now the task begins. Below are the person’s raw blogs. Please only output the result. Do not include any additional explanatory text.
+{blog}
+Listing 16: Prompt D: persona_quality_control
+**Evaluate the quality of a generated user persona based on the raw posts and the extracted persona paragraph provided. Consider the following aspects in your evaluation:**
+1. **Hallucination:** Does the persona strictly reflect information that is explicitly supported by the raw posts? Score 10 for no hallucinations (all facts directly mentioned), 8 if a few facts are very confidently inferred, down to 1 if most facts are neither mentioned nor plausibly inferred.
+2. **Coverage:** Does the persona cover the main salient aspects of the user that appear in the raw posts (e.g., demographics, values, interests, emotional tone)? Are important elements missing?
+3. **Conciseness and Clarity:** Is the persona concise, cohesive, and written in clear third-person prose within the 100-word limit? Does it avoid redundancy, listing, and repetition?
+4. **Relevance:** Has generic, promotional, or repetitive content from the raw posts been appropriately excluded from the persona?
+5. **Overall:** Give an overall score for the persona based on the above aspects and your holistic judgment.
+**Output your evaluation in the following XML-like format:**
+<data>
+<explanation> [Your brief analysis and justification.] </explanation>
+<hallucination> [Hallucination score: integer 1-10] </hallucination>
+<coverage> [Coverage score: integer 1-10] </coverage>
+<conciseness> [Conciseness and clarity score: integer 1-10] </conciseness>
+<relevance> [Relevance score: integer 1-10] </relevance>
+<overall> [Overall score: integer 1-10] </overall>
+</data>
+**Instructions:**
+Base all ratings and analysis strictly on the given raw posts and generated persona. Do not include any content or facts unsupported by the original posts. If the persona reports "NULL", give the 1 to all scores.
+Now the task begins.
+Data Statistics. To provide a quantitative overview of the entire seed persona construction pipeline, Table 10 summarizes the data retained at each major processing stage. The column labels in the table use abbreviated names that correspond directly to the sections described above: “Raw” refers to the original crawled texts (Corpora and Scale); “Preproc” denotes the number of texts remaining after preprocessing and cleaning (Preprocessing); “Raw QC” corresponds to texts retained after quality and safety filtering (Raw Data Quality Control); “Persona Gen” indicates the number of users for whom a draft persona was generated (Persona Generation); and “Persona QC” reflects the final number of high-quality personas retained after evaluation (Persona Quality Control). Statistics are shown separately for blogs.
+
+Table 10.Seed-persona construction statistics across pipeline stages. “Raw”: original crawled texts. “Preproc”: Preprocessing. “Raw QC”: Raw Text Quality Control. “Persona Gen”: Persona Generation. “Persona QC”: Persona Quality Control.
+Source	Raw	Preproc (S1)	Raw QC (S2)	Persona Gen (S3)	Persona QC (S4)
+Blog	681,000	500,000	368,000	41,607	30,738
+Appendix GTheoretical Guarantees
+In this part, we provide finite-sample guarantees for our two-stage persona alignment framework. We quantify the approximation error after Importance Sampling and the additional bias introduced by entropic Optimal Transport. These results provide formal support for the population-level alignment effectiveness of our method.
+
+Theorem 1 (Approximation Error after Importance Sampling). Let 
+𝒫
+†
+=
+{
+p
+i
+}
+i
+=
+1
+N
+†
+ be the set of candidate personas selected via importance sampling from an original set of 
+N
+ personas, and let 
+r
+human
+ denote the empirical human response distribution from 
+M
+ samples. Let 
+r
+^
+persona
+†
+ be the empirical distribution of the responses induced by 
+𝒫
+†
+, and 
+d
+ be the dimension of response vectors. Then with probability at least 
+1
+−
+δ
+, we have:
+
+(22)		
+W
+2
+(
+r
+^
+persona
+†
+,
+r
+human
+)
+=
+O
+(
+h
+2
++
+log
+⁡
+(
+1
+/
+δ
+)
+N
+​
+h
+d
++
+log
+⁡
+(
+1
+/
+δ
+)
+M
+​
+h
+d
++
+log
+⁡
+(
+1
+/
+δ
+)
+N
+†
+)
+where 
+h
+>
+0
+ denotes the kernel bandwidth for KDE. This result confirms that the candidate personas selected through KDE-based importance sampling already achieve meaningful coarse-grained alignment with human psychometric distributions.
+
+Theorem 2 (Entropic OT Approximation Error). Let 
+X
+†
+=
+{
+x
+i
+}
+i
+=
+1
+N
+†
+ be the response vectors of personas in 
+𝒫
+†
+, and 
+Y
+=
+{
+y
+j
+}
+j
+=
+1
+M
+ be the human responses. Let 
+C
+∈
+ℝ
+N
+†
+×
+M
+ be the cost matrix with entries 
+C
+i
+​
+j
+=
+‖
+x
+i
+−
+y
+j
+‖
+2
+2
+, and let 
+Γ
+⋆
+ be the optimal transport plan obtained via entropic OT with regularization parameter 
+ε
+>
+0
+. Then the deviation from exact Wasserstein alignment satisfies:
+
+(23)		
+|
+⟨
+C
+,
+Γ
+⋆
+⟩
+−
+W
+2
+2
+​
+(
+r
+persona
+†
+,
+r
+human
+)
+|
+=
+O
+​
+(
+ε
+)
+.
+This bound indicates that the OT refinement step achieves fine-grained distribution matching, with an approximation bias that is explicitly controlled by the entropy regularization parameter 
+ε
+. All proofs are provided in Appendix G.
+
+G.1.Proof of Theorem 1
+Theorem 1 (Approximation Error after Importance Sampling). Let 
+𝒫
+†
+=
+{
+p
+i
+}
+i
+=
+1
+N
+†
+ be the set of candidate personas selected via importance sampling from an original set of 
+N
+ personas, and let 
+r
+human
+ denote the empirical human response distribution from 
+M
+ samples. Let 
+r
+^
+persona
+†
+ be the empirical distribution of the responses induced by 
+𝒫
+†
+, and 
+d
+ be the dimension of response vectors. Then with probability at least 
+1
+−
+δ
+, we have:
+
+(24)		
+W
+2
+(
+r
+^
+persona
+†
+,
+r
+human
+)
+=
+O
+(
+h
+2
++
+log
+⁡
+(
+1
+/
+δ
+)
+N
+​
+h
+d
++
+log
+⁡
+(
+1
+/
+δ
+)
+M
+​
+h
+d
++
+log
+⁡
+(
+1
+/
+δ
+)
+N
+†
+)
+where 
+h
+>
+0
+ denotes the kernel bandwidth for KDE.
+
+Proof. Denote the oracle weights by 
+w
+i
+⋆
+=
+f
+P
+h
+​
+(
+x
+i
+)
+/
+f
+Q
+h
+​
+(
+x
+i
+)
+, where 
+f
+P
+h
+=
+f
+P
+∗
+K
+h
+ and 
+f
+Q
+h
+=
+f
+Q
+∗
+K
+h
+ are the Gaussian‑smoothed densities. Let 
+w
+i
+IS
+=
+f
+^
+P
+​
+(
+x
+i
+)
+/
+f
+^
+Q
+​
+(
+x
+i
+)
+ and put 
+π
+i
+⋆
+=
+w
+i
+⋆
+/
+∑
+k
+w
+k
+⋆
+. Standard KDE bounds (e.g. Tsybakov (2008)) give
+
+max
+i
+⁡
+|
+w
+i
+IS
+−
+w
+i
+⋆
+|
+=
+O
+​
+(
+h
+2
++
+log
+⁡
+(
+1
+/
+δ
+)
+N
+​
+h
+d
++
+log
+⁡
+(
+1
+/
+δ
+)
+M
+​
+h
+d
+)
+with probability 
+1
+−
+δ
+/
+3
+. Because 
+f
+Q
+h
+ is bounded below, dividing by 
+∑
+k
+w
+k
+⋆
+=
+Θ
+​
+(
+1
+)
+ converts (A) into
+
+‖
+π
+−
+π
+⋆
+‖
+TV
+=
+O
+​
+(
+h
+2
++
+log
+⁡
+(
+1
+/
+δ
+)
+N
+​
+h
+d
++
+log
+⁡
+(
+1
+/
+δ
+)
+M
+​
+h
+d
+)
+.
+Since 
+S
+ is compact, TV-Wasserstein duality (Fournier and Guillin, 2015, Lemma 2) implies
+
+W
+2
+​
+(
+π
+,
+π
+⋆
+)
+≤
+diam
+⁡
+(
+S
+)
+​
+2
+​
+‖
+π
+−
+π
+⋆
+‖
+TV
+.
+Combining with (B) yields
+
+W
+2
+​
+(
+π
+,
+π
+⋆
+)
+=
+O
+​
+(
+h
+2
++
+log
+⁡
+(
+1
+/
+δ
+)
+N
+​
+h
+d
++
+log
+⁡
+(
+1
+/
+δ
+)
+M
+​
+h
+d
+)
+.
+By importance‑sampling theory 
+π
+⋆
+ is unbiased for 
+r
+human
+, so 
+W
+2
+​
+(
+π
+⋆
+,
+r
+human
+)
+=
+0
+. Therefore (C) is exactly the bias induced by replacing oracle weights with estimated ones.
+
+Conditioned on 
+{
+π
+i
+}
+, the multiset 
+𝒫
+†
+ is obtained via 
+N
+†
+ i.i.d. draws from 
+π
+. Applying the concentration bound for empirical Wasserstein distance (Fournier and Guillin, 2015, Theorem 2) gives, with probability 
+1
+−
+δ
+/
+3
+,
+
+W
+2
+​
+(
+r
+^
+persona
+†
+,
+π
+)
+=
+O
+​
+(
+log
+⁡
+(
+1
+/
+δ
+)
+N
+†
+)
+.
+By a union bound, events (B)-(D) hold with probability at least 
+1
+−
+δ
+. Then by the triangle inequality and combining (C) and (D), we conclude:
+
+W
+2
+​
+(
+r
+^
+persona
+†
+,
+r
+human
+)
+=
+O
+​
+(
+h
+2
++
+log
+⁡
+(
+1
+/
+δ
+)
+N
+​
+h
+d
++
+log
+⁡
+(
+1
+/
+δ
+)
+M
+​
+h
+d
++
+log
+⁡
+(
+1
+/
+δ
+)
+N
+†
+)
+.
+G.2.Proof of Theorem 2
+Theorem 2 (Entropic OT Approximation Error). Let 
+X
+†
+=
+{
+x
+i
+}
+i
+=
+1
+N
+†
+ be the response vectors of personas in 
+𝒫
+†
+, and 
+Y
+=
+{
+y
+j
+}
+j
+=
+1
+M
+ be the human responses. Let 
+C
+∈
+ℝ
+N
+†
+×
+M
+ be the cost matrix with entries 
+C
+i
+​
+j
+=
+‖
+x
+i
+−
+y
+j
+‖
+2
+2
+, and let 
+Γ
+⋆
+ be the optimal transport plan obtained via entropic OT with regularization parameter 
+ε
+>
+0
+. Then the deviation from exact Wasserstein alignment satisfies:
+
+(24)		
+|
+⟨
+C
+,
+Γ
+⋆
+⟩
+−
+W
+2
+2
+​
+(
+r
+persona
+†
+,
+r
+human
+)
+|
+=
+O
+​
+(
+ε
+)
+.
+Proof. Show that the entropic-OT cost differs from the exact 2‑Wasserstein cost by at most 
+O
+​
+(
+ε
+)
+.
+
+Let
+
+μ
+=
+1
+N
+†
+​
+∑
+i
+=
+1
+N
+†
+δ
+x
+i
+,
+ν
+=
+1
+M
+​
+∑
+j
+=
+1
+M
+δ
+y
+j
+,
+and define the feasible set of uniform couplings 
+𝒰
+=
+Π
+​
+(
+1
+N
+†
+​
+𝟏
+N
+†
+,
+1
+M
+​
+𝟏
+M
+)
+. Denote the entropic objective
+
+𝒮
+ε
+​
+(
+Γ
+)
+:=
+⟨
+C
+,
+Γ
+⟩
++
+ε
+​
+∑
+i
+,
+j
+Γ
+i
+​
+j
+​
+(
+log
+⁡
+Γ
+i
+​
+j
+−
+1
+)
+,
+whose minimiser is 
+Γ
+⋆
+.
+
+Take any optimal un‑regularised transport plan 
+Γ
+OT
+∈
+𝒰
+; then 
+⟨
+C
+,
+Γ
+OT
+⟩
+=
+W
+2
+2
+​
+(
+μ
+,
+ν
+)
+. Since 
+Γ
+⋆
+ minimises 
+𝒮
+ε
+,
+
+⟨
+C
+,
+Γ
+⋆
+⟩
++
+ε
+​
+H
+​
+(
+Γ
+⋆
+)
+≤
+W
+2
+2
+​
+(
+μ
+,
+ν
+)
++
+ε
+​
+H
+​
+(
+Γ
+OT
+)
+.
+Dismiss the (negative) entropy on the LHS to obtain
+
+⟨
+C
+,
+Γ
+⋆
+⟩
+≤
+W
+2
+2
+​
+(
+μ
+,
+ν
+)
++
+ε
+​
+[
+H
+​
+(
+Γ
+OT
+)
+−
+H
+​
+(
+Γ
+⋆
+)
+]
+.
+All feasible 
+Γ
+∈
+𝒰
+ have entries in 
+[
+1
+N
+†
+​
+M
+,
+ 1
+]
+; hence
+
+−
+log
+⁡
+(
+N
+†
+​
+M
+)
+≤
+H
+​
+(
+Γ
+)
+≤
+0
+,
+so 
+|
+H
+​
+(
+Γ
+OT
+)
+−
+H
+​
+(
+Γ
+⋆
+)
+|
+≤
+log
+⁡
+(
+N
+†
+​
+M
+)
+. Plugging this into (A) yields
+
+⟨
+C
+,
+Γ
+⋆
+⟩
+≤
+W
+2
+2
+​
+(
+μ
+,
+ν
+)
++
+ε
+​
+log
+⁡
+(
+N
+†
+​
+M
+)
+.
+Because 
+Γ
+OT
+ is feasible for the entropic problem,
+
+𝒮
+ε
+​
+(
+Γ
+⋆
+)
+≤
+𝒮
+ε
+​
+(
+Γ
+OT
+)
+=
+W
+2
+2
+​
+(
+μ
+,
+ν
+)
++
+ε
+​
+H
+​
+(
+Γ
+OT
+)
+,
+which rearranges (using the same entropy gap) to
+
+⟨
+C
+,
+Γ
+⋆
+⟩
+≥
+W
+2
+2
+​
+(
+μ
+,
+ν
+)
+−
+ε
+​
+log
+⁡
+(
+N
+†
+​
+M
+)
+.
+By combining (B) and (C), we have:
+
+|
+⟨
+C
+,
+Γ
+⋆
+⟩
+−
+W
+2
+2
+​
+(
+μ
+,
+ν
+)
+|
+≤
+ε
+​
+log
+⁡
+(
+N
+†
+​
+M
+)
+=
+O
+​
+(
+ε
+)
+.
+Hence
+
+|
+⟨
+C
+,
+Γ
+⋆
+⟩
+−
+W
+2
+2
+​
+(
+r
+persona
+†
+,
+r
+human
+)
+|
+=
+O
+​
+(
+ε
+)
+.

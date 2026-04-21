@@ -1,0 +1,564 @@
+HTML conversions sometimes display errors due to content that did not convert correctly from the source. This paper uses the following packages that are not yet supported by the HTML conversion tool. Feedback on these issues are not necessary; they are known and are being worked on.
+
+failed: cuted
+Authors: achieve the best HTML results from your LaTeX submissions by following these best practices.
+
+License: arXiv.org perpetual non-exclusive license
+arXiv:2411.09577v2 [cs.HC] null
+SimTube: Generating Simulated Video Comments through Multimodal AI and User Personas
+Yu-Kai Hung
+b09902040@csie.ntu.edu.tw
+orcid
+National Taiwan UniversityNo. 1, Sec. 4, Roosevelt Rd.
+Yun-Chien Huang
+b09902067@csie.ntu.edu.tw
+orcid
+National Taiwan UniversityNo. 1, Sec. 4, Roosevelt Rd.
+Ting-Yu Su
+tingyusu1786@gmail.com
+orcid
+National Taiwan UniversityNo. 1, Sec. 4, Roosevelt Rd.
+Yen-Ting Lin
+ytl@ieee.org
+orcid
+National Taiwan UniversityNo. 1, Sec. 4, Roosevelt Rd.
+Lung-Pan Cheng
+lung-pan.cheng@csie.ntu.edu.tw
+orcid
+National Taiwan UniversityNo. 1, Sec. 4, Roosevelt Rd.
+Bryan Wang
+bryanw@dgp.toronto.edu
+orcid
+University of Toronto
+Shao-Hua Sun
+shaohuas@ntu.edu.tw
+orcid
+National Taiwan UniversityNo. 1, Sec. 4, Roosevelt Rd.
+Abstract.
+Audience feedback is crucial for refining video content, yet it typically comes after publication, limiting creators’ ability to make timely adjustments. To bridge this gap, we introduce SimTube, a generative AI system designed to simulate audience feedback in the form of video comments before a video’s release. SimTube features a computational pipeline that integrates multimodal data from the video—such as visuals, audio, and metadata—with user personas derived from a broad and diverse corpus of audience demographics, generating varied and contextually relevant feedback. Furthermore, the system’s UI allows creators to explore and customize the simulated comments. Through a comprehensive evaluation—comprising quantitative analysis, crowd-sourced assessments, and qualitative user studies—we show that SimTube’s generated comments are not only relevant, believable, and diverse but often more detailed and informative than actual audience comments, highlighting its potential to help creators refine their content before release.
+
+†copyright: none
+Refer to caption
+Figure 1.SimTube (A) generates synthetic content-based video comments and (B) supports user-steerable comment generation from users’ responding or defined persona, providing preliminary inspiration and insight for iterating video.
+\Description
+SimTube generates synthetic content-based video comments and supports user-steerable comment generation from users’ responding or defined persona, providing preliminary inspiration and insight for iterating video.
+
+1.Introduction
+Audience feedback is crucial for video content creators to shape and refine content. Various modern platforms [11, 57, 60] allow creators to share videos and gather crowd-sourced input [74, 71, 82, 57]. For instance, YouTubers and TikTok creators frequently adjust their content based on audience reactions and comments from previous episodes [26, 14]. However, such audience feedback is often delayed, typically provided only after the content has been published, limiting creators’ ability to make timely improvements and dynamically adjust the content. That said, creators must wait until their content is posted to receive input, which can only influence future episodes rather than the current one. For novice creators, this challenge is even more pronounced due to the low visibility of their content, making it difficult to gather substantial, actionable feedback.
+
+To address these limitations, we aim to develop methods to enable video content creators to obtain diverse and meaningful audience feedback before publishing their videos. Specifically, we focus on simulating audience comments, a prevalent form of feedback on video-sharing platforms. Video comments allow viewers to directly share their thoughts with creators, often sparking broader discussions as other users engage by liking or replying [70]. These engagements offer valuable perspectives and foster a sense of community [70, 17], making video comments a rich source of feedback for creators.
+
+To this end, we present SimTube, a full-stack AI system capable of generating diverse, relevant, and believable audience comments based on video content. We proposed a computational pipeline that leverages generative AI models, including vision language models (VLMs) for understanding visuals, speech recognition for transcribing audio, and large language models (LLMs) for generating natural language feedback. This pipeline first integrates the multimodal data in videos—including visuals, audio, and metadata—to produce a video summary and keywords. Subsequently, the video summary and keywords are combined with various persona descriptions—representing different audience demographics and backgrounds—to simulate video comments from diverse perspectives. In addition to this pipeline, we designed a user interface that allows creators to upload videos, obtain simulated feedback, and interactively explore the results. Users can also customize personas to tailor the feedback to specific viewpoints or audience backgrounds as they see fit.
+
+To understand the effectiveness of SimTube and the quality of the comments it generates, we conducted a comprehensive set of assessments, including quantitative analysis, crowd-sourced ratings, and qualitative studies. Our results indicate that SimTube produces relevant, believable, and helpful comments for creators across various video genres. Notably, in many instances, AI-generated comments were rated as more informative and beneficial to creators than those left by actual users. Additionally, the user study provided insights into how SimTube can integrate into creators’ video production workflows, revealing user perceptions of generative video comments.
+
+Collectively, this paper makes the following contributions:
+
+• SimTube, an interactive system that supports the automatic generation of diverse video comments, enabling creators to receive valuable feedback before publishing their video content.
+• A multimodal AI pipeline that integrates multiple data modalities in video—such as visuals, audio, and metadata—along with user personas sampled from a large dataset, to produce diverse, relevant, believable, and helpful video comments for creators.
+• A thorough evaluation involving automatic metrics, crowdsourcing, and qualitative user studies, demonstrating SimTube’s effectiveness and providing insights for the development of future AI-assisted feedback tools in content creation.
+2.Related Work
+SimTube builds upon prior work on vision-guided natural language generation, feedback tools, and the simulation of human-like behaviors using LLMs.
+
+2.1.Vision-guided Natural Language Generation
+Natural Language Generation (NLG) focuses on developing machine learning techniques to generate textual content. A subarea of NLG integrates visual input, such as images and videos, to guide the generation process. A prominent example is image captioning, where a model takes an image as input and outputs a textual description of the visual content [5, 37, 38, 50, 27]. This has many downstream applications, including accessibility enhancements [15, 23]. Other vision-guided NLG tasks include visual question-answering (VQA) [2, 21], where a model receives an image and a language-based query as inputs and outputs an answer, or visual storytelling, which involves generating coherent narratives based on a sequence of images [18, 33, 64, 29, 10].
+
+Beyond static images, videos serve as another form of visual content, extending imagery with a temporal axis. Accordingly, tasks like video captioning [65, 62, 4, 69, 7, 22], audiovisual content recognition [68], and video question-answering (Video QA) [83] have been explored. The temporal dimension introduces additional information, which can be excessive for applications requiring concise understanding. Thus, research has been conducted to summarize individual frames into concise video summaries [12, 75, 73]. Depending on the video type, different generation tasks arise. For instance, in live-streamed videos, there has been work on generating real-time commentary [84, 46, 79, 16].
+
+These works are closely related to SimTube. However, they primarily focus on generating viewer comments for entertainment purposes and are limited to specific types of videos based on their training data. In contrast, our work aims to generate diverse perspectives intended to assist creators in improving their videos. Additionally, we leverage advanced vision-language models (VLMs) [52, 12], which are more generalizable and capable of handling diverse video inputs and generating varied language outputs, surpassing the capabilities of prior work.
+
+2.2.Tools for Providing Feedback
+Feedback is essential for improving task performances  [25, 34, 36]. Traditionally, feedback was gathered through face-to-face and synchronous interactions. However, with the advancement of the Internet, feedback-gathering tools now facilitate asynchronous collection and transfer of rich feedback forms for documentation [81], music [13], image editing [85], and video [57, 60] through text, audio, pen input, and even gestures. Despite these advancements, such tools still rely heavily on human feedback, resulting in high wait times and significant human effort. Timely feedback is often only possible through peer-based critiques, as seen in MOOC scenarios [36].
+
+To address these limitations, automatic feedback tools have emerged, providing real-time, personalized feedback without human intervention across various tasks, such as programming [40], writing [67, 51], and academic assignments [47], helping users iterate and refine their work. Some automated assistance tools for content creators, such as AI Insights by YouTube [82], suggest textual video outlines based on user input and prior content. Thematic [71] analyzes real video comments to generate bulletin-style reports. SimTube extends this body of work on automatic feedback tools by contributing a novel interactive system capable of generating video comments from diverse perspectives, providing creators with valuable feedback. It also allows users to interactively explore various generated comments, offering further opportunities for iterative refinement and creative exploration.
+
+2.3.Simulating Human-Like Behaviors with LLMs
+LLMs, trained on vast datasets and knowledge [8, 52], have demonstrated the ability to perform tasks once thought to be exclusive to humans, such as reasoning  [78] and creative writing  [49, 39]. Consequently, there has been growing research exploring the potential of using LLMs to simulate human behaviors. One prominent example is Generative Agents [55], where LLMs simulate daily life and interactions between virtual characters in a game environment. Prior work has also explored simulating Reddit community comments [56] and synthesizing user study data [24]. Additionally, numerous studies have employed LLMs to create agents serving various roles, such as educators [58], customer service agents [54, 35], and even historical figures1. These simulations are often achieved through prompt engineering using a persona or a description of a human background, enabling the models to perform tasks specific to the assigned persona [31, 61, 6, 72]. In this work, we build upon this body of research to further explore how LLMs, equipped with personas, can benefit creators by simulating human interactions and feedback on video-sharing platforms, providing insights for content refinement. However, we acknowledge the potential implications of simulating human-like behaviors and ensure that users understand our generated comments are purely simulated, intended as a supplement to real human feedback rather than a replacement.
+
+3.Design Goals
+The objective of our system, SimTube, is to automatically generate simulated video comments that provide creators with useful, actionable feedback, while also allowing them to customize and iteratively explore the generated content. To this end, we have established the following design goals (DGs):
+
+• DG1: Integrating and Leveraging Multimodal Information for Video Comment Generation. Videos inherently contain rich information across multiple modalities, including visuals, audio, and narration. To comprehensively inform SimTube’s comment generation module, we aim to design a pipeline that effectively integrates and leverages multimodal information extracted from videos.
+• DG2: Generating Diverse, Relevant, and Believable Comments. We aim to design SimTube to generate comments that are diverse, relevant, and believable, ensuring they are beneficial to creators. We intend to supplement, rather than replace, genuine human feedback by offering an automated and scalable means of generating useful and assorted feedback for creators.
+• DG3: Supporting Users to Interactively Generate Comments. We plan to design SimTube as an interactive tool that engages users in the comment generation pipeline, enabling them to steer the generation according to their preferences, e.g., feedback from the targeted audience, and developing in-depth discussions with commenters.
+Guided by these design goals, we developed the SimTube system as a comprehensive full-stack web application, featuring a frontend user interface (UI) and a backend comment simulation pipeline. We first describe the UI and user expereince of using SimTube in Section 4, followed by the discussion of the backend implementation that empowers the user experience, in Section 5. We will also highlight how our design goals are tightly connected to specific aspects of the system’s design.
+
+4.SimTube User Interface
+Refer to caption
+Figure 2. Users upload a video via the Upload Video Page, and (A) view the comments generated by SimTube on the Simulated Comment Page, and by (B) replying to a comment or (C) specifying a customized persona, users can ask SimTube to generate new comments. In addition, users can refer to the persona description by (D) hovering on the commenter’s icon.
+\Description
+Caption result demonstration.
+
+SimTube’s user interface (UI) implements a three-step workflow: Video Uploading, Comment Simulation, and Comment Customization. In the process, users upload a video, after which SimTube’s backend pipeline generates related comments. Finally, users can review and interact with the comments. The following subsections will further discuss each component of the workflow.
+
+4.1.Video Uploading
+The video upload process begins when users click the Create button, which opens Upload Video page, a modal interface for video submission, as depicted in the upper section of Figure 2. Users provide essential video metadata, such as title, description, and thumbnail image, similar to what the audience would perceive on popular video streaming platforms like YouTube. The system supports multiple video uploads, with all submissions accessible through the Video List page, as depicted in the lower left quadrant of Figure 2. Upon successful upload, the frontend sends the video along its metadata to the backend pipeline, initiating the comment generation process (DG1). Simultaneously, a progress bar that mirrors the real-time progression of comment generation is incorporated.
+
+4.2.Comment Simulation
+Upon completion of the simulation process, the Show Result button materializes, guiding users to the Simulated Comment page, illustrated in the lower right quadrant of Figure 2. The page displays contextually relevant comments generated by the backend pipeline beneath the video content. Each simulated comment includes comprehensive particulars: the commenter’s name, profile picture, and persona — accessible by hovering over the profile pictures, as demonstrated by tag D in Figure 2. Each comment is generated based on different personas, showcasing the diversity of generated comments from different user backgrounds (DG2). The comment interface deliberately mirrors conventional video-sharing platforms, providing users with a familiar environment for receiving feedback. This design approach ensures that users can focus on evaluating the simulated comments without interface-related distractions, maintaining an intuitive and seamless review experience.
+
+4.3.Comment Customization
+While automatic comment simulation generates diverse perspectives, SimTube extends the generation by offering user-directed customization capabilities. This customization framework enables adjustments in comment generation input, allowing users to explore perspectives beyond the initial output (DG3). The system implements two interaction mechanisms for comment :
+
+• Thread Expansion: Users can extend existing discussions by replying to any simulated comment. The dialogue is then deepened with the system generating a follow-up reply with the original persona, as illustrated in the left panel of Figure 3.
+• Persona Crafting: Users can receive feedback from specific audience’s perspectives by defining personas. A new comment will be generated according to the user-defined persona and the video content, as demonstrated in the right panel of Figure 3.
+Refer to caption
+Figure 3. Thread Expansion: Upon receipt of (A) the user’s reply, The thread is expanded by both (B) the user’s reply and (C) the generated response of the commenter. Persona Crafting: (D) Upon user specification of a persona, (E) a new comment is generated in alignment with the video content and the user-defined persona.
+\Description
+5.SimTube Backend Implementation
+In the  Section 4, we described the UI of SimTube and explained how users could interact with our system to obtain video feedback through generated comments. We now detail our novel generative AI-based backend pipeline that powers these features. Starting from how the audience would perceive a video, from clicking the video that interests them, watching the video, acquiring the content, to leaving their comments. The backend pipeline consists of three primary components, as illustrated in Figure 4: (a) a Video Understanding module, which captures the semantics of video content through multimodal summarization; (b) a Persona Query module, which retrieves relevant user personas for providing feedback on the video; and (c) Comment Generation, which combines video understanding and user persona information to generate and present comments in the UI, allowing user interaction.
+
+5.1.Video Understanding
+The video understanding pipeline digests multimodal content of the video, including the clips, thumbnails, and metadata (DG1), subsequently synthesizing and producing a cohesive textual video summary. To achieve this within the current models’ capability, we decompose the video into visual and auditory components. The pipeline diagram is illustrated in the red block ”Video Understanding” tagged (a) in Figure 4.
+
+5.1.1   Audio Transcription
+Many videos contain speech dialogue or narration, offering rich information for understanding their themes and key messages. To extract this information, we use Whisper [59] to transcribe the dialogue or narration within the video. Among Whisper’s models, we select the Whisper-medium model for its balanced efficiency and performance. The resulting transcription provides both the dialogue and corresponding timestamps.
+
+5.1.2   Frame Captioning
+A comprehensive understanding of a video requires integrating crucial visual elements such as objects, scenes, and dynamic information [28]. We utilize a powerful vision-language model (VLM), LLaVA-NeXT 13B, to convert visual data into textual descriptions. However, most VLMs are designed to process single images, while analyzing video content necessitates capturing temporal continuity across sequential frames. To address this, we propose a unique approach that considers the temporal aspects of video while aligning visual and audio tracks. First, we process the visual and auditory tracks simultaneously in chronological order, matching them through timestamps. This frame-dialogue pairing enables the model to better understand the scene and activities with temporal context. Additionally, we employ a comic-like assembly of four consecutive visual frames as a single image, referred to as a ”panel”, which is input into the VLM. We design a VLM prompt to emphasize key visual details, such as objects, scenes, temporal dynamics, and character emotions, as outlined in  Appendix B. The VLM then processes each panel-dialogue pair, generating a caption for a one-second video segment. This caption, enriched with audio and temporal details, integrates the essential information. Example captions are shown in  Appendix C.
+
+5.1.3   Summary Generation
+Once all video captions are generated, we use an LLM to summarize them along with the transcript 2 to create a comprehensive video summary. The captions and transcript are fed into the LLM in chronological order to maintain the temporal flow. However, videos can contain numerous frames, making it difficult to fit all information into a single context window. To overcome this, we utilize Claude 1.6, an LLM with an extended context window of 200K tokens. Based on our testing, this capacity is sufficient to accommodate all frame captions and the audio transcript of a 25-minute video. The LLM generates a video summary and extracts keywords, which are then used in the next stage—persona querying.
+
+Refer to caption
+Figure 4. SimTube leverage VLM and Whisper to process videos in visual and audio components per modality. Personas are then queried based on the video content for comment generation. The system diagrams, situated centrally in the figure, along with the intermediate outputs on both flanks, exemplify this process.
+\Description
+Caption result demonstration.
+
+5.2.Persona Query
+In our initial testing, generating comments directly from the video summary obtained in the previous stage produced informative and helpful comments; however, they often lacked sufficient diversity in opinions and variety. Inspired by prior work leveraging user personas to simulate diverse generation [48, 31], we incorporated persona information into our generation pipeline by developing the Persona Query system. This system queries multiple related personas for comment generation, as shown in the blue block labeled (b) Persona Query in Figure 4.
+
+5.2.1   Persona Dataset
+A persona is a textual description of a person’s personality, background, and hobbies, and other demographic information. We include personas in our system to help the LLM generate diverse outputs [31] (DG2). Specifically, we use PersonaChat [48], a popular dataset containing over 8,000 personas, to enhance the diversity of user backgrounds in our comment generation pipeline.
+
+5.2.2   Querying Persona
+In our preliminary testing, irrelevant personas usually lead to low-quality comments; therefore, we focus on those most relevant to the video content. To achieve this, we measure the similarity between personas and the video keywords obtained in Section 5.1.3. Compared to the whole video summary, keywords concisely cover the video topic in just a few representative words, making the process faster and more accurate. We first embed all personas and keywords into text embedding using the text-embedding-3-small model from OpenAI. After that, we calcualte the cosine similarity between each persona and the keywords. We then rank the personas based on their similarity to the video’s keywords, selecting the top 30 most relevant personas. Once the most relevant personas are retrieved, the pipeline uses them in combination with other data, including the video summary and metadata, to generate video comments.
+
+5.3.Comment Generation
+Our system supports four types of simulated comments using data from earlier stages. The first two types are automatically generated by the system, while the last two are user-initiated and customizable, offering quick and interactive feedback (DG3):
+
+(1) Primary Comments: The initial comments that appear directly under the video.
+(2) Thread Comments: The generated responses to existing comments, structured hierarchically as threaded replies beneath primary comments.
+(3) Response Comments: The comments generated for responding to user’s reply, contributing to a discussion thread under the replied comment.
+(4) Custom Persona Comments: The comments generated based on a user-defined persona, tailored to user specifications.
+After the video is pre-processed by the upstream components, our system directly generates 30 comments, consisting of 70% primary comments and 30% thread comments. Additional generations can be triggered to obtain more comments if needed. Below, we discuss how each type of comment is generated.
+
+5.3.1   Primary Comments
+We prompt the LLM with a comment generation instruction, queried personas, and video metadata obtained from the earlier stages of backend processing. We design a role instruction that guides the model to emulate typical YouTube commenting behavior through few-shot prompting [77], using real YouTube comments as examples. Subsequently, we incorporate the retrieved personas from Section 5.2 to ensure diversity in the generated comments. The video metadata includes details such as the video title, description, author, and thumbnail description, along with the summary and keywords generated previously, encapsulating information a viewer might perceive when watching a YouTube video. Once the comments are generated, a random name and icon are assigned for authenticity. Names are selected from an SSA dataset [66] containing over 10,000 common U.S. baby names, while icons are uniquely generated using Boring-avatars [32].
+
+5.3.2   Thread Comments
+To simulate discussion threads, the system utilizes different personas to respond to primary comments, adding depth to the conversation and mimicking the extended exchanges commonly seen on video-sharing platforms where viewers engage in discussions. This is achieved by randomly selecting a portion of the primary comments and performing another LLM inference using a prompt that includes all relevant video data (as used for primary comment generation), the selected primary comment, and a new persona. This process generates the thread comments. An example of thread comments is shown in the right panel of Figure 2.
+
+5.3.3   Reply Comments
+Our tool enables users to interact with pre-generated comments (Thread Expansion feature detailed in Section 4.3), similar to engaging with other people in an online forum. When a user replies to a comment, the system generates a relevant response, providing immediate feedback. The method for generating these responses is identical to that of Thread Comment, with the distinction that the user’s reply and the replied comment are included. The system processes these comments within approximately 10 seconds. An example of reply comments is labeled by tag C in Figure 3.
+
+5.3.4   Custom Persona Comments
+The system also supports users in customizing personas for further exploration and experimentation. When a user-defined persona is provided, the system generates comments using the same approach as for primary comments, but tailored to the user’s specified persona. For inspiration on persona customization, users can hover over an existing comment’s avatar to view example persona descriptions from other comments (as shown by tag D in Figure 2). This type of comment is generated when users utilize the Persona Crafting feature described in Section 4.3.
+
+These four types of comments are presented in the frontend UI for users to read, engage with, and provide feedback on their videos. In the following two sections, we will discuss comprehensive studies on the quality of the generated comments, as well as user perceptions of our system and its comments, and how it might integrate into their video creation workflow.
+
+6.Quantitative Evaluation
+We conducted extensive quantitative evaluations verifying the ability of SimTube to produce diverse and relevant comments. Specifically, we adopt both crowd-sourced, human-annotated evaluations as presented in Section 6.1, and automatic metrics widely used for natural language generation tasks, such as Self-BLEU, Distinct-Ngram, BERTScore, etc., as presented in Section 6.2.
+
+6.1.Crowd-Sourced Evaluation
+We conducted a crowd-sourced evaluation to assess the effectiveness of SimTube from human perspectives. Given the widely accepted understanding that LLMs can generate sentences with human-level fluency [9], our study focuses on three high-level aspects: Relevance, Believability, and Helpfulness, to ensure alignment with our design goal (DG2).
+
+• Relevance: refers to the degree to which comments are aligned with the video’s content.
+• Believability: indicates the likelihood that users would consider the comment credible.
+• Helpfulness: assesses the extent to which comments can provide valuable feedback to content creators, aiding in the enhancement of their videos and potentially inspiring new ideas.
+6.1.1   Videos and Comments
+We selected eight videos from YouTube, each covering one distinct video genre listed in Appendix A. For each video, we sampled 30 comments from three categories:
+
+(1) Real Comments are from the real YouTube users commenting on this video. We randomly sampled 30 comments from the top 1000 popular comments on each video, ranked by YouTube based on their meta-ratings, to exclude any offensive or inappropriate remarks [63]. We also filtered out non-English comments to exclude the effect of different languages.
+(2) Persona-based Comments were generated by the full SimTube system, including Primary Comments and Thread Comments.
+(3) No Persona Comments were generated by an ablated version of SimTube without the persona components.
+6.1.2   Survey Protocol
+We recruited 25 participants on Upwork to evaluate comments according to the three aspects, utilizing a 7-Point Likert Scale. We collect the ratings from the participants using Google Forms. Each form includes one YouTube video link, five video quizzes, and three evaluation sections with different criteria for the same 30 comments. To ensure the quality of responses, we structured the forms into five stages: 1) Watch the Video, 2) Video Quiz (see Appendix D), 3) Video Summary, 4) Comments Evaluation, and 5) Form Feedback. A validated reply must achieve an 80% correction rate in the quiz in stage 2 and provide an overall correct video summary in stage 3. The video summaries collected in stage 3 are reused as the ground truth of human-like detailed video summaries for later use.
+
+6.1.3   Results
+The results from our crowd-sourced study, displayed in the ”Crowd Study” plot in Figure 5, show significant differences between the two configurations of SimTube-generated comments and real comments. Specifically, SimTube comments with the persona configuration were rated significantly higher in relevance, believability, and helpfulness compared to real comments (p ¡ 0.05). Similarly, comments generated without a persona (No-persona) also outperformed real comments in relevance, believability (p ¡ 0.05). However, the comparison between the full system and the No-persona configuration did not yield a statistically significant difference.
+
+We used the Wilcoxon Signed-Rank Test for paired comparisons, with Bonferroni Correction applied to control for multiple comparisons across these three conditions. These results highlight the effectiveness of SimTube-generated comments, with or without personas, in delivering feedback perceived as more valuable than that found in real comments.
+
+While sampling candidates from popular real comments effectively eliminate most nonsensical comments, it is noteworthy that these popular comments are often brief and offer limited informative value for creators. In some instances, they are purely laudatory, offering no substantial critique or feedback. Conversely, with LLM’s outstanding writing skills and inclusive attitude, generated comments usually stimulate broader discussion and a multitude of potential insights. This result aligns with recent studies showing that LLM output can outperform human-written ones [20]. Some comments and their average scores of this evaluation are shown in the Appendix G. The raw average scores and lengths of comments can be found in Appendix E.
+
+6.2.Automatic Metrics
+Besides the crowd-sourced evaluation, we also conducted extensive evaluations using automatic metrics [41, 87, 42, 86, 43] widely adopted in natural language generation tasks [44, 80, 19, 45]. Similar to the crowd evaluation, we assess three types of comments: Full System (with Persona), No Persona, and Real Comments. For the automatic metrics, we focus on two widely evaluated aspects in NLG: 1) Diversity and 2) Relevance of comments. To minimize variance in the evaluations, we generated a larger number of comments for the automatic metrics assessment. The total number of comments for Full System, No Persona, and Real Comments are 
+671
+,
+1141
+,
+18338
+, respectively, while the average lengths of the comments are 
+286.18
+,
+100.1
+,
+85.58
+ characters.
+
+Refer to caption
+Figure 5. This plot includes quantitative results from Crowd-Sourced Study and other automatic metrics measuring diversity such as BERTScore, Distinct N-grams, and Self-BLEU.
+\Description
+6.2.1   Diversity
+A diverse set of comments offers varied perspectives, encompassing different word choices and comment topics. Typically, generated comments, particularly those from the Full System (persona-based), exhibit the highest diversity in wording, while Real Comments display greater diversity at the semantic level. We also noted that a subset of Real Comments appeared to be highly repetitive, as indicated by the significant variation in the sampled size of the Self-BLEU Score.
+
+Distinct N-grams. A greater count of distinct N-grams indicates a higher level of word-level diversity. Generated comments, especially the Full System (Persona-based) comments, achieve the highest average number of distinct n-grams per comment, as depicted in the plot titled ”Distinct N-gram” in Figure 5. Considering the length variations across the conditions—with Real Comments generally being short [70]—the right side of the plot titled ”Distinct N-gram” in Figure 5 presents length-normalized results.
+
+SelfBLEU. Self-BLEU inspects the similarity of intra-group comments. A higher Self-BLEU score implies a higher similarity among a group of comments and lower diversity. The right side of the plot titled ”Self-BLEU” in Figure 5 demonstrates the Self-BLEU scores of same number of comments across different sources. The left half of the plot indicate the Self BLEU score of a larger group number of comments (num=
+671
+,
+1141
+,
+18338
+). We noticed that real comments have a higher score as the sample number increases, which may imply that a part of real comments are duplicated.
+
+BERTScore. Intra-group BERTScore checks the semantic similarity in a group of comments. A higher intra-group BERTScore indicates a lower diversity. The real comments score the highest semantic level diversity, as shown in the plot title ”BERTScore” in Figure 5.
+
+6.2.2   Relevance
+Some Real Comments can be off-topic and divergent, causing confusion and high semantic diversity scores. A relevant comment is on-topic and pertinent to the video content. We measured the word and semantic similarity between comments and video content. The ground-truth video summaries were compiled from 30 User Study participants using Claude 3.5 Sonnet. Generally, our generated comments were more relevant to the video on both levels.
+
+Refer to caption
+Figure 6. This figure contains quantitative results from automatic metrics measuring relevance between targeted text and video content, such as LLM Eval, ROUGE-n (n=1, 2, L), and BERTScore.
+\Description
+LLM Evaluation. We adopted LLM evaluation, which has shown high correlation coefficients with human ratings among commonly used automatic metrics [43]. To mitigate potential bias from LLMs towards their own generated comments [3], we utilized two different models, Claude 3.5 Sonnet and GPT-4, to assess both real comments and those generated by our system. The LLMs evaluated each target comment against the video summary and rated its relevance on a scale from 0 to 100, where a higher score indicates greater relevance. The results show that the generated comments significantly outperform the real comments, demonstrating closer relevance to the video, as illustrated in the plot titled ”LLM Eval Figure 6.
+
+ROUGE. ROUGE is a recall-based metric that evaluates the relevance of a comment at the word level. The plot titled ”ROUGE-n” in Figure 6 presents the precision score, which is the proportion of words in the comment that are also found in the video summary. Mostly, generated comments exhibit greater relevance to the video across all ROUGE metrics.
+
+BERTScore. BERTScore evaluates the semantic-level relevance of embeddings between comments and the given video summary. Hence, a higher BERTScore indicates greater comment relevance to the video. To compute the BERTScore, we utilize the model microsoft/deberta-xlarge-mnli from Hugging Face, which has the highest correlations with human evaluation currently in the WMT16 benchmark. As shown in the plot titled ”BERTScore” in Figure 6, The generated comments outperform real comments and demonstrate a statistically significant difference in semantic-level relevance.
+
+6.3.Conclusion
+According to the crowd-sourced evaluation and the evaluations using various automatic, the comments generated by our system display superior word-level diversity, while Real Comments showcase better semantic diversity. Although a few real comments cover distinct common topics, clusters of real comments may be highly similar, as reflected by the Self-BLEU score. Concerning relevance to video content, generated comments outperform Real Comments in word-level, semantic-level, and LLM evaluations. In comparison to Real Comments, generated comments tend to be more on-topic, authentic, and differentiated, offering a potent source of inspiration. Despite their limited semantic diversity, the scalability, rapid production, and pre-publication availability make generated comments an advantageous preliminary source of inspiration and feedback complementing Real Comments, particularly before the formal publication of videos.
+
+7.Qualitative User Study
+In addition to the quantitative evaluation, we conducted a qualitative user study to gather feedback on the comments generated by SimTube and to assess the system’s utility. We also aimed to understand creators’ perspectives on how SimTube could integrate into the broader video production workflow.
+
+7.1.Participants
+We recruited eight experienced content creators, each with a minimum of one year of video filming and editing experience (M = 5.06 years, SD = 4.76 years, range: 1–13 years). Two participants were full-time creators. The age range was 22 to 33 years (M = 26.38 years, SD = 4.27 years), and the gender distribution included five males and three females. Participants were recruited through a university course forum, a Reddit video editing community, and direct outreach on social media. The group represented a variety of video genres, including travel vlogs (P1, P2, P7), airline reviews (P3), Instagram reels (P5), street interviews (P6), tech news (P4), and tech reviews (P8).
+
+7.2.Study Protocol
+Each study session lasted between 1 to 1.5 hours. Before the session, participants were asked to prepare either a finalized or rough-cut video, including a thumbnail, title, and description. They could optionally provide up to three videos. These videos served as material for comment simulation, enabling participants to evaluate SimTube’s capabilities and limitations. At the beginning of each session, participants were briefed on the study protocol and completed a pre-study questionnaire. They then interacted with the system to explore and assess the comments generated by SimTube. After using the system, we conducted semi-structured interviews to gather insights into their perceptions of both the tool and the quality of the generated comments.
+
+7.3.Findings
+We now present the key findings identified in the interviews.
+
+7.3.1   Creator’s Perception of Generated Comments
+Participants generally expressed a positive attitude toward the comments generated by SimTube. P1 appreciated how the system provided insights into specific audience viewpoints. Similarly, P2 emphasized the value of diverse perspectives offered by the system-generated comments. P6 highlighted the speed and cost-efficiency of the generated comments, expressing interest in uploading multiple video versions for comparison: ”I might want to upload every version of my video and make an intra-video comparison to further observe the differences between versions.” P4 suggested that generated comments could serve as supplementary feedback alongside real comments but still preferred genuine feedback from human audiences or friends at this stage, as his target audience is human rather than AI.
+
+Our system provides an advantage over traditional methods of gathering extensive feedback, allowing creators to receive input without disclosing unpublished videos. P6, a novice YouTuber, stated, ”I usually need feedback from my friend (before uploading my video)… (Generated comments) are like having more friends to share my new video clips with and get their opinions.” Participants also commended the scalability of SimTube. For example, P4, a YouTuber with over 460,000 subscribers, mentioned they only received 126 comments on his latest video in two days, whereas SimTube can generate over 5,000 comments for a 20-minute video within a single day. The system also enables users to create in-depth and interactive discussions quickly, whether by responding to comments or assigning personas to the system. Lastly, unlike real comments, LLM-generated text tends to be more moderated, helping avoid cyberbullying and reducing negative effects on users. P4 noted that real hateful comments could be harmful to content creators. ”Generated comments, while generally free from harshness, still present opposing ideas, which is helpful for content creators.” (P4)
+
+7.3.2   Persona’s Effectiveness on Comment Generation
+Persona is a key component we integrated into SimTube to support diverse feedback generation, and we aimed to understand its impact on users’ perceptions. We observed mixed reactions: some participants found persona-based comments engaging and relevant (P2, P4, P6), while others viewed them as unrealistic or unnecessary (P1, P5, P8). In contrast, no persona comments were concise and video-focused (P2, P5, P7), but they sometimes lacked inspiration (P4), detail (P6), and engagement (P4). P4 stated, ”Persona-based comments look informative, just like an audience resonating strongly with my video.” On the other hand, P2 commented, ”Their replies don’t bring new ideas.” We also observed that some persona-based comments contained irrelevant information because the sampled personas were less relevant to the video, which could cause confusion. Overall, we found that while persona integration adds depth and detail to comments and can inspire users, it may also introduce inconsistencies.
+
+7.3.3   Threads Expansion and Persona Crafting
+SimTube allows users to interactively engage in conversations through threaded replies and persona customization. Participants found the threaded reply feature useful, benefiting from the opportunity to engage in multiple rounds of interaction. For example, P1 initially had trouble using feedback to improve her video, but after replying to ask for specific suggestions, she gained valuable insights that helped her make improvements. Similarly, P3 received a comment on her budget airline review video, suggesting she try a full-service airline. She responded by asking the AI commenter to compare their experiences, which led to a detailed reply and the idea for a future comparison video. P6 also asked for advice on ”broadening horizons” in her video content, and the system provided her with detailed, personalized suggestions that matched her video’s theme.
+
+The persona customization feature enables users to generate more targeted feedback using personas that may not have been included in our dataset. For example, P7 applied personas such as a mom, critic, and advisor for her self-reflective video, finding that these tailored personas provided feedback that felt realistic and aligned with her needs. Similarly, P1 used the persona of an English-speaking East Asia travel enthusiast. She felt the generated comment accurately captured her target audience’s perspective: ”Wow, this vlog seriously makes me miss Seoul. Your adventures at Ewha and the nightlife clips brought back so many memories! Can’t wait to see what Japan brings.”
+
+7.3.4   Integrating SimTube into Video Production
+Participants identified multiple stages in their video production workflows where SimTube could be effectively integrated, aligning closely with professional film production processes such as topic brainstorming, outlining, footage capture, editing, and finalization [53]. Many participants (P4, P6, P8) emphasized creating rough-cut versions or teasers during the editing phase, enabling collaboration and feedback from sponsors or team members. As P4 explained, ”A rough-cut lets my team and sponsors give feedback before we proceed further”. This suggests that SimTube could enhance this process by providing automatic, diverse feedback on uploaded rough cuts. P6 added, ”I can seamlessly integrate SimTube into my workflow and collect more feedback with minimal effort by uploading the rough-cut version or any segments whenever I complete one.”
+
+Beyond assisting with existing content, SimTube could also inspire new video topics. Participants (P1, P3, P6) highlighted that AI-generated comments led them to explore new ideas. For instance, P1, a travel vlogger, received recommendations for famous tourist spots like Ikseon-dong Hanok Village after uploading a Korean vlog, even though these places were not featured in the video. ”SimTube correctly listed all my itineraries based on my narration, which helped me plan new vlogs,” P1 noted, demonstrating the system’s ability to generate contextually relevant insights.
+
+SimTube could also influence ongoing video production. P6 uploaded a half-finished street interview video on student lifestyles, and the persona-based comments generated by SimTube extended the discussion between the host and interviewee, introducing new topics such as time management for university students. ”It prompted me to explore this theme further and enriched my video,” P6 shared, illustrating how SimTube’s integration can guide and enhance content creation throughout different stages of the workflow.
+
+8.Discussions and Future Work
+We have presented the design, implementation, and evaluation of SimTube. In this section, we discuss the key findings from our study, the limitations of our approach, and potential areas for future development.
+
+8.1.Expanding SimTube’s Pipeline
+SimTube advances automated feedback tools within the video creation workflow by generating pre-publication comments that enable creators to reflect on and refine their content. However, our current focus is limited to audio/visual semantics, addressing only a portion of the video production. Key elements such as visual effects, audio enhancements, and editing techniques—crucial for maximizing viewer engagement—are not yet incorporated. Additionally, while SimTube can generate comments for general video content, it currently does not consider inherent variations in video like genre, style, or cultural context. These areas present opportunities to expand SimTube’s computational pipeline to accommodate additional contextual information and enable more customized comment generation. Future improvements could also include handling longer video inputs and enhancing the overall quality of language generation to provide more nuanced and useful feedback.
+
+8.2.Integration into Video Production Workflows
+While we have assessed the quality of our generated comments, the system has yet to be deployed in real-world settings. Future research should explore integrating SimTube into video editing tools [76, 30] or production environments to evaluate its overall impact. Qualitative studies could further investigate how the system complements professional workflows, providing deeper insights into its practical utility. Relevantly, the system currently generates comments only based on a single version of the video. However, creators often produce multiple iterations to determine the best result. By analyzing a series of video edits, the system could generate comparative feedback that highlights differences between the current and previous versions, enabling users to refine their work more effectively by leveraging the strengths of each iteration. Expanding to handle multiple versions, however, introduces challenges related to system scalability and processing efficiency that warrant future explorations.
+
+8.3.Improving Helpfulness of Comments
+Our automated evaluations indicate that LLM-generated comments sometimes surpass online user feedback in several metrics, including helpfulness. This may be attributed to the nature of online comments, which often lean toward opinionated or humorous remarks rather than constructive feedback. In contrast, our system’s comments are specifically designed to provide actionable insights. A potential future direction involves integrating professional feedback data into the pipeline, refining models with expert insights to enhance guidance quality. Nonetheless, general audience feedback remains valuable; our study demonstrates that even non-expert input can inspire creators and positively impact their creative processes.
+
+8.4.Implications of AI-Generated Comments
+Lastly, we recognize the implications of using AI for human-like comment generation, including potential unintended outputs and misuse. Our goal is to manage these risks responsibly, ensuring that tools like SimTube remain focused on supporting and enhancing creators’ work. For instance, P4 in our study observed that the system was able to generate critical yet constructive comments in language that is “generally free from harshness”, in contrast to real comments that sometimes contain offensive language and negatively impact creators. Moving forward, we plan to advance SimTube with ethical considerations at the forefront, maintaining its supportive role in the creative process.
+
+9.Conclusion
+We have presented SimTube, a novel system that automatically generates video comments, offering creators valuable feedback to enhance their videos before publishing. We detailed the design and implementation of our system, focusing on the comment generation pipeline and the user interface. The pipeline utilizes advanced generative AI models to process multimodal video data and incorporate user personas, resulting in diverse and tailored comments. Our user interface supports user-steerable comment generation, allowing users to influence the output based on their responses and defined personas. We conducted a comprehensive evaluation using both quantitative and qualitative methods, including human crowdsourced assessments, automated metrics, and a user study with experienced content creators. We hope our work establishes a foundation for future development of automatic feedback and critique tools in content creation systems.
+
+Appendix
+Appendix AYouTube Video Category List
+(1) Animation and Film
+(2) Autos and Vehicles
+(3) Music Videos
+(4) Pets and Animals
+(5) Sports
+(6) Travel & Events
+(7) Gaming
+(8) Comedy
+(9) People and Blogs
+(10) Entertainment
+(11) News and Politics
+(12) How to And
+(13) Education
+(14) Science and Technology
+(15) Non Profit & Activism
+Appendix BPrompts
+[Generate Frame Caption]
+You are an AI visual assistant that can generate audio description for a video clip. You receive a image of 4 frames, which are sampled during 4 seconds of the video clip. You also receive the audio caption during the 4 seconds.
+The 4-th frame is the current frame, using the provided frames and audio caption, generate an audio description of the current frame in a detailed manner. Include details like object counts, position of the objects, relative position between the objects, the visual composition, the emotion, what might be going on during the clip, etc. Imagine describing the video clip to someone who cannot see the clip.
+
+Appendix CSampled Frame Captions
+Pasting four frames in one image and corresponding narration help VLM identify temporal information, the activity, and the scene.
+
+Refer to caption
+Figure 7.The frames are captured in a gaming YouTube video4 between 0:45 and 0:48.
+\Description
+Frame Caption: In the current frame, a player is seen holding a blue bucket, standing in front of a large, glowing lava pit. The player appears to be in the process of filling the bucket with lava, as indicated by the audio caption. The lava pit is located in the center of the image, with the player standing to its right. The player’s position and the direction of their gaze suggest they are focused on the task at hand. The overall scene suggests a moment of gameplay in a video game, possibly involving resource gathering or crafting.
+
+Refer to caption
+Figure 8.The frames are captured in a cooking YouTube video6 between 0:57 and 1:00.
+\Description
+Frame Caption: A hand is seen holding a silver spoon, which is scooping white flour from a container. the container appears to be a plastic bag, and the flour is being poured into a glass bowl. the bowl is placed on a wooden surface, and there are other ingredients nearby, including a bottle and a jar. the scene suggests that someone is in the process of preparing a recipe that requires a significant amount of flour. the action of scooping the flour indicates that the person is carefully measuring the ingredients for the recipe. the overall composition of the image suggests a home cooking environment.
+
+Appendix DSampled Form Questions
+What did they use to send the garlic bread to the sky?
+(A) Weather balloon
+(B) Hot air balloon (C) Helium balloon (D) A drone
+
+How did the host end the video?
+(A) Express his love
+(B) Take a photo with the crowd (C) Talk in his studio (D) Pet a puppy
+
+What is the first method introduced?
+(A) Baked Chicken
+(B) Roasted Chicken (C) Boiled Chicken (D) Broiled Chicken
+
+Appendix EComment Length to Rating
+Table 1.Average Length and Score for Relevance, Believability, and Helpfulness Across Conditions
+Group	
+Full System
+No Persona
+Real
+Average Length	
+233.4625
+97.8875
+107.7625
+Relevance	
+5.248
+5.313
+4.295
+Believability	
+5.293
+5.181
+4.401
+Helpfulness	
+5.213
+4.719
+4.194
+Appendix FConfusing Persona-based Comment Examples
+Related content is underlined and confusing comments is in italic.
+
+Video Title: Grad School Visiting and Bar Exploration in NYC.
+
+Persona: ”i like to go to the farmer s market every weekend. i am committed to the environment. i live in nashville. i play music in my spare time. i work in academia at a local university. However, i have opposite idea to this video. Will leave different comment with different perspective.”
+
+Comment: ”Love the diversity of experiences you shared from the academic to the social, but let’s also chat about sustainable travel and how we can enjoy cities responsibly. Greetings from another academic here in Nashville. Let’s keep pushing for a greener earth while we explore!”
+
+Video Title: Review: Galaxy S24 Ultra - Galaxy AI Comprehensive Test and Smartphones Comparison.
+
+Persona: ” i really enjoy reading the news. i love new technology. i try to find easy ways to make money. i wish i could play the stock market well. i like to create websites.”
+
+Comments: ”Wow, this review blew my mind ! The way AI is changing how we use smartphones, especially for someone like me who’s always on the lookout for new tech and easy ways to maximize efficiency, is fascinating. Tech like this could really shake up the stock market for tech companies!”
+
+Appendix GCrowd-Sourced Comment Samples
+We demonstrate Persona-based comments, Real comments used for this evaluation and their scores. Three score are listed in the order of Relevance, Believability and Helpfulness.
+
+G.1.Real Comments
+Video Title: We Sent Garlic Bread to the Edge of Space, Then Ate It.
+
+Comments: That’s why aliens hate people. We act like we are giving them garlic bread and took it back. It makes them look like fool. Scores: 4.32, 3.86, 3.5.
+
+Comments: Is it bird? Is it a plane? Nah… it’s a piece of garlic bread :D Scores: 5.36, 5.07, 4.18.
+
+Comments: STRATOSPHERIC BREAD! We just learned about this in science like last month ago. Scores: 4.79, 4.5, 4.18
+
+G.2.Generated Comments
+Video Title: We Sent Garlic Bread to the Edge of Space, Then Ate It
+
+Comments: Who else got here just to see if the space garlic bread tastes any different? Scores: 5.39, 5.75, 4.75
+
+Comments: Nothing like combining the thrill of space with the comfort of garlic bread! This is the kind of adventurous spirit I live for. Great to see something so out-of-the-box! Makes me ponder what other foods could take a stratospheric journey. #SpaceBreadAdventures Scores: 5.64, 5.89, 5.14.
+
+Comments: Interesting experiment, but how about considering the environmental impact of such stunts? Launching objects into the stratosphere for taste tests seems a bit frivolous given the broader challenges our planet faces Scores: 4.68, 4.89, 5.54.
+
+Acknowledgements.
+Shao-Hua Sun was supported by the Yushan Fellow Program by the Ministry of Education, Taiwan.
+References
+[1]
+Antol et al. [2015]
+Stanislaw Antol, Aishwarya Agrawal, Jiasen Lu, Margaret Mitchell, Dhruv Batra, C Lawrence Zitnick, and Devi Parikh. 2015.Vqa: Visual question answering. In Proceedings of the IEEE international conference on computer vision. 2425–2433.
+Arjun Panickssery and Samuel R. Bowman and Shi Feng [2024]
+Arjun Panickssery and Samuel R. Bowman and Shi Feng. 2024.LLM Evaluators Recognize and Favor Their Own Generations.arXiv:2404.13076 [cs.CL] https://arxiv.org/abs/2404.13076
+Barbu et al. [2012]
+Andrei Barbu, Alexander Bridge, Zachary Burchill, Dan Coroian, Sven Dickinson, Sanja Fidler, Aaron Michaux, Sam Mussman, Siddharth Narayanaswamy, Dhaval Salvi, Lara Schmidt, Jiangnan Shangguan, Jeffrey Mark Siskind, Jarrell Waggoner, Song Wang, Jinlian Wei, Yifan Yin, and Zhiqi Zhang. 2012.Video In Sentences Out.arXiv:1204.2742 [cs.CV] https://arxiv.org/abs/1204.2742
+Barnard [2016]
+Kobus Barnard. 2016.Computational Methods for Integrating Vision and Language.Synthesis Lectures on Computer Vision 6 (04 2016), 1–227.https://doi.org/10.2200/S00705ED1V01Y201602COV007
+Benharrak et al. [2024]
+Karim Benharrak, Tim Zindulka, Florian Lehmann, Hendrik Heuer, and Daniel Buschek. 2024.Writer-Defined AI Personas for On-Demand Feedback Generation. In Proceedings of the CHI Conference on Human Factors in Computing Systems (CHI ’24, Vol. 11). ACM, 1–18.https://doi.org/10.1145/3613904.3642406
+Bogolin et al. [2020]
+Simion-Vlad Bogolin, Ioana Croitoru, and Marius Leordeanu. 2020.A hierarchical approach to vision-based language generation: from simple sentences to complex natural language. In Proceedings of the 28th International Conference on Computational Linguistics, Donia Scott, Nuria Bel, and Chengqing Zong (Eds.). International Committee on Computational Linguistics, Barcelona, Spain (Online), 2436–2447.https://doi.org/10.18653/v1/2020.coling-main.220
+Brown [2020]
+Tom B Brown. 2020.Language models are few-shot learners.arXiv preprint arXiv:2005.14165 (2020).
+Bubeck et al. [2023]
+Sébastien Bubeck, Varun Chandrasekaran, Ronen Eldan, Johannes Gehrke, Eric Horvitz, Ece Kamar, Peter Lee, Yin Tat Lee, Yuanzhi Li, Scott Lundberg, Harsha Nori, Hamid Palangi, Marco Tulio Ribeiro, and Yi Zhang. 2023.Sparks of Artificial General Intelligence: Early experiments with GPT-4.arXiv:2303.12712 [cs.CL] https://arxiv.org/abs/2303.12712
+Chandu et al. [2019]
+Khyathi Chandu, Shrimai Prabhumoye, Ruslan Salakhutdinov, and Alan W Black. 2019.“My Way of Telling a Story”: Persona based Grounded Story Generation. In Proceedings of the Second Workshop on Storytelling, Francis Ferraro, Ting-Hao ‘Kenneth’ Huang, Stephanie M. Lukin, and Margaret Mitchell (Eds.). Association for Computational Linguistics, Florence, Italy, 11–21.https://doi.org/10.18653/v1/W19-3402
+Chelaru et al. [2014]
+Sorina Chelaru, Claudia Orellana-Rodriguez, and Ismail Sengor Altingovde. 2014.How useful is social feedback for learning to rank YouTube videos?World Wide Web 17, 5 (2014), 997–1025.https://doi.org/10.1007/s11280-013-0258-9
+Chen et al. [2024]
+Lin Chen, Xilin Wei, Jinsong Li, Xiaoyi Dong, Pan Zhang, Yuhang Zang, Zehui Chen, Haodong Duan, Bin Lin, Zhenyu Tang, Li Yuan, Yu Qiao, Dahua Lin, Feng Zhao, and Jiaqi Wang. 2024.ShareGPT4Video: Improving Video Understanding and Generation with Better Captions.arXiv:2406.04325 [cs.CV] https://arxiv.org/abs/2406.04325
+Colin Dodds [2024]
+Ahmed Kharrufa Colin Dodds. 2024.Show-and-Tell: An Interface for Delivering Rich Feedback upon Creative Media Artefacts.Multimodal Technol. Interact (2024).https://www.mdpi.com/2414-4088/8/3/23
+Digital Marketing Institute [2024]
+Digital Marketing Institute. 2024.14 Ways to Grow Your YouTube Channel.https://digitalmarketinginstitute.com/.https://digitalmarketinginstitute.com/blog/10-ways-to-grow-your-youtube-channel-in-2018Accessed: 2024-10-01.
+Dognin et al. [2022]
+Pierre Dognin, Igor Melnyk, Youssef Mroueh, Inkit Padhi, Mattia Rigotti, Jarret Ross, Yair Schiff, Richard A Young, and Brian Belgodere. 2022.Image captioning as an assistive technology: Lessons learned from vizwiz 2020 challenge.Journal of Artificial Intelligence Research 73 (2022), 437–459.
+Duan et al. [2020]
+Chaoqun Duan, Lei Cui, Shuming Ma, Furu Wei, Conghui Zhu, and Tiejun Zhao. 2020.Multimodal Matching Transformer for Live Commenting.arXiv:2002.02649 [cs.CL] https://arxiv.org/abs/2002.02649
+Dubovi and Tabak [2020]
+Ilana Dubovi and Iris Tabak. 2020.An empirical analysis of knowledge co-construction in YouTube comments.Computers & Education 156 (2020), 103939.https://doi.org/10.1016/j.compedu.2020.103939
+Farhadi et al. [2010]
+Ali Farhadi, Mohsen Hejrati, Mohammad Amin Sadeghi, Peter Young, Cyrus Rashtchian, Julia Hockenmaier, and David Forsyth. 2010.Every Picture Tells a Story: Generating Sentences from Images. In Computer Vision – ECCV 2010, Kostas Daniilidis, Petros Maragos, and Nikos Paragios (Eds.). Springer Berlin Heidelberg, Berlin, Heidelberg, 15–29.
+Gong et al. [2022]
+Shansan Gong, Mukai Li, Jiangtao Feng, Zhiyong Wu, and LingPeng Kong. 2022.Diffuseq: Sequence to sequence text generation with diffusion models.arXiv preprint arXiv:2210.08933 (2022).
+Goyal et al. [2022]
+Tanya Goyal, Junyi Jessy Li, and Greg Durrett. 2022.News Summarization and Evaluation in the Era of GPT-3.ArXiv abs/2209.12356 (2022).https://api.semanticscholar.org/CorpusID:252532176
+Goyal et al. [2017]
+Yash Goyal, Tejas Khot, Douglas Summers-Stay, Dhruv Batra, and Devi Parikh. 2017.Making the v in vqa matter: Elevating the role of image understanding in visual question answering. In Proceedings of the IEEE conference on computer vision and pattern recognition. 6904–6913.
+Guadarrama et al. [2013]
+Sergio Guadarrama, Niveda Krishnamoorthy, Girish Malkarnenkar, Subhashini Venugopalan, Raymond Mooney, Trevor Darrell, and Kate Saenko. 2013.YouTube2Text: Recognizing and Describing Arbitrary Activities Using Semantic Hierarchies and Zero-Shot Recognition. In 2013 IEEE International Conference on Computer Vision. 2712–2719.https://doi.org/10.1109/ICCV.2013.337
+Gurari et al. [2020]
+Danna Gurari, Yinan Zhao, Meng Zhang, and Nilavra Bhattacharya. 2020.Captioning images taken by people who are blind. In Computer Vision–ECCV 2020: 16th European Conference, Glasgow, UK, August 23–28, 2020, Proceedings, Part XVII 16. Springer, 417–434.
+Hämäläinen et al. [2023]
+Perttu Hämäläinen, Mikke Tavast, and Anton Kunnari. 2023.Evaluating Large Language Models in Generating Synthetic HCI Research Data: a Case Study. In Proceedings of the 2023 CHI Conference on Human Factors in Computing Systems (Hamburg, Germany) (CHI ’23). Association for Computing Machinery, New York, NY, USA, Article 433, 19 pages.https://doi.org/10.1145/3544548.3580688
+Hattie and Timperley [2007]
+John Hattie and Helen Timperley. 2007.The Power of Feedback.Review of Educational Research 77, 1 (2007), 81–112.https://doi.org/10.3102/003465430298487 arXiv:https://doi.org/10.3102/003465430298487
+Holmbom [2015]
+Maria Holmbom. 2015.The YouTuber: A Qualitative Study of Popular Content Creators.Dissertation. Umeå University.https://urn.kb.se/resolve?urn=urn:nbn:se:umu:diva-105388
+Hossain et al. [2019]
+MD. Zakir Hossain, Ferdous Sohel, Mohd Fairuz Shiratuddin, and Hamid Laga. 2019.A Comprehensive Survey of Deep Learning for Image Captioning.ACM Comput. Surv. 51, 6, Article 118 (feb 2019), 36 pages.https://doi.org/10.1145/3295748
+Huang et al. [2018]
+De-An Huang, Vignesh Ramanathan, Dhruv Mahajan, Lorenzo Torresani, Manohar Paluri, Li Fei-Fei, and Juan Carlos Niebles. 2018.What Makes a Video a Video: Analyzing Temporal Information in Video Understanding Models and Datasets. In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR).
+Huang et al. [2016]
+Ting-Hao Kenneth Huang, Francis Ferraro, Nasrin Mostafazadeh, Ishan Misra, Aishwarya Agrawal, Jacob Devlin, Ross Girshick, Xiaodong He, Pushmeet Kohli, Dhruv Batra, C. Lawrence Zitnick, Devi Parikh, Lucy Vanderwende, Michel Galley, and Margaret Mitchell. 2016.Visual Storytelling. In Proceedings of the 2016 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, Kevin Knight, Ani Nenkova, and Owen Rambow (Eds.). Association for Computational Linguistics, San Diego, California, 1233–1239.https://doi.org/10.18653/v1/N16-1147
+Huh et al. [[n.d.]]
+Mina Huh, Saelyne Yang, and Yi-Hao Peng. [n.d.].Xiang’Anthony’Chen, Young-Ho Kim, and Amy Pavel. 2023. AVscript: Accessible Video Editing with Audio-Visual Scripts. In Proceedings of the 2023 CHI Conference on Human Factors in Computing Systems. 1–17.
+Jiang et al. [2024]
+Hang Jiang, Xiajie Zhang, Xubo Cao, Cynthia Breazeal, Deb Roy, and Jad Kabbara. 2024.PersonaLLM: Investigating the Ability of Large Language Models to Express Personality Traits.arXiv:2305.02547 [cs.CL] https://arxiv.org/abs/2305.02547
+josepmartins [[n.d.]]
+josepmartins. [n.d.].boring-avatar.https://github.com/boringdesigners/boring-avatars
+Kim et al. [2019]
+Taehyeong Kim, Min-Oh Heo, Seonil Son, Kyoung-Wha Park, and Byoung-Tak Zhang. 2019.GLAC Net: GLocal Attention Cascading Networks for Multi-image Cued Story Generation.arXiv:1805.10973 [cs.CL] https://arxiv.org/abs/1805.10973
+Kluger and DeNisi [1996]
+Avraham N Kluger and Angelo DeNisi. 1996.The effects of feedback interventions on performance: a historical review, a meta-analysis, and a preliminary feedback intervention theory.Psychological bulletin 119, 2 (1996), 254.
+Kolasani [2023]
+Saydulu Kolasani. 2023.Optimizing Natural Language Processing, Large Language Models (LLMs) for Efficient Customer Service, and hyper-personalization to enable sustainable growth and revenue.Transactions on Latest Trends in Artificial Intelligence 4, 4 (2023).https://ijsdcs.com/index.php/TLAI/article/view/476
+Kulkarni et al. [2015]
+Chinmay E. Kulkarni, Michael S. Bernstein, and Scott R. Klemmer. 2015.PeerStudio: Rapid Peer Feedback Emphasizes Revision and Improves Performance. In Proceedings of the Second (2015) ACM Conference on Learning @ Scale (Vancouver, BC, Canada) (L@S ’15). Association for Computing Machinery, New York, NY, USA, 75–84.https://doi.org/10.1145/2724660.2724670
+Kulkarni et al. [2011]
+Girish Kulkarni, Visruth Premraj, Sagnik Dhar, Siming Li, Yejin Choi, Alexander C Berg, and Tamara L Berg. 2011.Baby talk: Understanding and generating simple image descriptions. In CVPR 2011. 1601–1608.https://doi.org/10.1109/CVPR.2011.5995466
+Kuznetsova et al. [2012]
+Polina Kuznetsova, Vicente Ordonez, Alexander Berg, Tamara Berg, and Yejin Choi. 2012.Collective Generation of Natural Image Descriptions. In Proceedings of the 50th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), Haizhou Li, Chin-Yew Lin, Miles Osborne, Gary Geunbae Lee, and Jong C. Park (Eds.). Association for Computational Linguistics, Jeju Island, Korea, 359–368.https://aclanthology.org/P12-1038
+Lee et al. [2022]
+Mina Lee, Percy Liang, and Qian Yang. 2022.CoAuthor: Designing a Human-AI Collaborative Writing Dataset for Exploring Language Model Capabilities. In Proceedings of the 2022 CHI Conference on Human Factors in Computing Systems (New Orleans, LA, USA) (CHI ’22). Association for Computing Machinery, New York, NY, USA, Article 388, 19 pages.https://doi.org/10.1145/3491102.3502030
+Lee and Ko [2011]
+Michael J. Lee and Amy J. Ko. 2011.Personifying programming tool feedback improves novice programmers’ learning. In Proceedings of the Seventh International Workshop on Computing Education Research (Providence, Rhode Island, USA) (ICER ’11). Association for Computing Machinery, New York, NY, USA, 109–116.https://doi.org/10.1145/2016911.2016934
+Li et al. [2016]
+Jiwei Li, Michel Galley, Chris Brockett, Jianfeng Gao, and Bill Dolan. 2016.A Diversity-Promoting Objective Function for Neural Conversation Models. In Proceedings of the 2016 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, Kevin Knight, Ani Nenkova, and Owen Rambow (Eds.). Association for Computational Linguistics, San Diego, California, 110–119.https://doi.org/10.18653/v1/N16-1014
+Lin [2004]
+Chin-Yew Lin. 2004.Rouge: A package for automatic evaluation of summaries. In Text summarization branches out. 74–81.
+Lin and Chen [2023]
+Yen-Ting Lin and Yun-Nung Chen. 2023.LLM-Eval: Unified Multi-Dimensional Automatic Evaluation for Open-Domain Conversations with Large Language Models. In Proceedings of the 5th Workshop on NLP for Conversational AI (NLP4ConvAI 2023), Yun-Nung Chen and Abhinav Rastogi (Eds.). Association for Computational Linguistics, Toronto, Canada, 47–58.https://doi.org/10.18653/v1/2023.nlp4convai-1.5
+Liu et al. [2023]
+Yang Liu, Dan Iter, Yichong Xu, Shuohang Wang, Ruochen Xu, and Chenguang Zhu. 2023.G-eval: Nlg evaluation using gpt-4 with better human alignment.arXiv preprint arXiv:2303.16634 (2023).
+Lu et al. [2022]
+Pan Lu, Swaroop Mishra, Tanglin Xia, Liang Qiu, Kai-Wei Chang, Song-Chun Zhu, Oyvind Tafjord, Peter Clark, and Ashwin Kalyan. 2022.Learn to explain: Multimodal reasoning via thought chains for science question answering.Advances in Neural Information Processing Systems 35 (2022), 2507–2521.
+Ma et al. [2018]
+Shuming Ma, Lei Cui, Damai Dai, Furu Wei, and Xu Sun. 2018.LiveBot: Generating Live Video Comments Based on Visual and Textual Contexts.arXiv:1809.04938 [cs.CL] https://arxiv.org/abs/1809.04938
+Malik et al. [2021]
+Ali Malik, Mike Wu, Vrinda Vasavada, Jinpeng Song, Madison Coots, John Mitchell, Noah Goodman, and Chris Piech. 2021.Generative Grading: Near Human-level Accuracy for Automated Feedback on Richly Structured Problems.arXiv:1905.09916 [cs.LG] https://arxiv.org/abs/1905.09916
+Meta [2022]
+Meta. 2022.PersonaChat.https://www.kaggle.com/datasets/atharvjairath/personachatAccessed: 2024-10-01.
+Mirowski et al. [2023]
+Piotr Mirowski, Kory W. Mathewson, Jaylen Pittman, and Richard Evans. 2023.Co-Writing Screenplays and Theatre Scripts with Language Models: Evaluation by Industry Professionals. In Proceedings of the 2023 CHI Conference on Human Factors in Computing Systems (Hamburg, Germany) (CHI ’23). Association for Computing Machinery, New York, NY, USA, Article 355, 34 pages.https://doi.org/10.1145/3544548.3581225
+Mitchell et al. [2012]
+Margaret Mitchell, Xufeng Han, Jesse Dodge, Alyssa Mensch, Amit Goyal, Alex Berg, Kota Yamaguchi, Tamara Berg, Karl Stratos, and Hal Daumé. 2012.Midge: generating image descriptions from computer vision detections. In Proceedings of the 13th Conference of the European Chapter of the Association for Computational Linguistics (Avignon, France) (EACL ’12). Association for Computational Linguistics, USA, 747–756.
+Nilforoshan and Wu [2018]
+Hamed Nilforoshan and Eugene Wu. 2018.Leveraging Quality Prediction Models for Automatic Writing Feedback.Proceedings of the International AAAI Conference on Web and Social Media 12, 1 (Jun. 2018).https://doi.org/10.1609/icwsm.v12i1.14998
+OpenAI et al. [2023]
+OpenAI, Josh Achiam, Steven Adler, Sandhini Agarwal, Lama Ahmad, Ilge Akkaya, Florencia Leoni Aleman, Diogo Almeida, Janko Altenschmidt, Sam Altman, Shyamal Anadkat, Red Avila, Igor Babuschkin, Suchir Balaji, Valerie Balcom, Paul Baltescu, Haiming Bao, Mohammad Bavarian, Jeff Belgum, Irwan Bello, Jake Berdine, Gabriel Bernadett-Shapiro, Christopher Berner, Lenny Bogdonoff, Oleg Boiko, Madelaine Boyd, Anna-Luisa Brakman, Greg Brockman, Tim Brooks, Miles Brundage, Kevin Button, Trevor Cai, Rosie Campbell, Andrew Cann, Brittany Carey, Chelsea Carlson, Rory Carmichael, Brooke Chan, Che Chang, Fotis Chantzis, Derek Chen, Sully Chen, Ruby Chen, Jason Chen, Mark Chen, Ben Chess, Chester Cho, Casey Chu, Hyung Won Chung, Dave Cummings, Jeremiah Currier, Yunxing Dai, Cory Decareaux, Thomas Degry, Noah Deutsch, Damien Deville, Arka Dhar, David Dohan, Steve Dowling, Sheila Dunning, Adrien Ecoffet, Atty Eleti, Tyna Eloundou, David Farhi, Liam Fedus, Niko Felix, Simón Posada Fishman, Juston Forte, Isabella Fulford, Leo Gao, Elie Georges, Christian Gibson, Vik Goel, Tarun Gogineni, Gabriel Goh, Rapha Gontijo-Lopes, Jonathan Gordon, Morgan Grafstein, Scott Gray, Ryan Greene, Joshua Gross, Shixiang Shane Gu, Yufei Guo, Chris Hallacy, Jesse Han, Jeff Harris, Yuchen He, Mike Heaton, Johannes Heidecke, Chris Hesse, Alan Hickey, Wade Hickey, Peter Hoeschele, Brandon Houghton, Kenny Hsu, Shengli Hu, Xin Hu, Joost Huizinga, Shantanu Jain, Shawn Jain, Joanne Jang, Angela Jiang, Roger Jiang, Haozhun Jin, Denny Jin, Shino Jomoto, Billie Jonn, Heewoo Jun, Tomer Kaftan, Łukasz Kaiser, Ali Kamali, Ingmar Kanitscheider, Nitish Shirish Keskar, Tabarak Khan, Logan Kilpatrick, Jong Wook Kim, Christina Kim, Yongjik Kim, Jan Hendrik Kirchner, Jamie Kiros, Matt Knight, Daniel Kokotajlo, Łukasz Kondraciuk, Andrew Kondrich, Aris Konstantinidis, Kyle Kosic, Gretchen Krueger, Vishal Kuo, Michael Lampe, Ikai Lan, Teddy Lee, Jan Leike, Jade Leung, Daniel Levy, Chak Ming Li, Rachel Lim, Molly Lin, Stephanie Lin, Mateusz Litwin, Theresa Lopez, Ryan Lowe, Patricia Lue, Anna Makanju, Kim Malfacini, Sam Manning, Todor Markov, Yaniv Markovski, Bianca Martin, Katie Mayer, Andrew Mayne, Bob McGrew, Scott Mayer McKinney, Christine McLeavey, Paul McMillan, Jake McNeil, David Medina, Aalok Mehta, Jacob Menick, Luke Metz, Andrey Mishchenko, Pamela Mishkin, Vinnie Monaco, Evan Morikawa, Daniel Mossing, Tong Mu, Mira Murati, Oleg Murk, David Mély, Ashvin Nair, Reiichiro Nakano, Rajeev Nayak, Arvind Neelakantan, Richard Ngo, Hyeonwoo Noh, Long Ouyang, Cullen O’Keefe, Jakub Pachocki, Alex Paino, Joe Palermo, Ashley Pantuliano, Giambattista Parascandolo, Joel Parish, Emy Parparita, Alex Passos, Mikhail Pavlov, Andrew Peng, Adam Perelman, Filipe de Avila Belbute Peres, Michael Petrov, Henrique Ponde de Oliveira Pinto, Michael, Pokorny, Michelle Pokrass, Vitchyr H. Pong, Tolly Powell, Alethea Power, Boris Power, Elizabeth Proehl, Raul Puri, Alec Radford, Jack Rae, Aditya Ramesh, Cameron Raymond, Francis Real, Kendra Rimbach, Carl Ross, Bob Rotsted, Henri Roussez, Nick Ryder, Mario Saltarelli, Ted Sanders, Shibani Santurkar, Girish Sastry, Heather Schmidt, David Schnurr, John Schulman, Daniel Selsam, Kyla Sheppard, Toki Sherbakov, Jessica Shieh, Sarah Shoker, Pranav Shyam, Szymon Sidor, Eric Sigler, Maddie Simens, Jordan Sitkin, Katarina Slama, Ian Sohl, Benjamin Sokolowsky, Yang Song, Natalie Staudacher, Felipe Petroski Such, Natalie Summers, Ilya Sutskever, Jie Tang, Nikolas Tezak, Madeleine B. Thompson, Phil Tillet, Amin Tootoonchian, Elizabeth Tseng, Preston Tuggle, Nick Turley, Jerry Tworek, Juan Felipe Cerón Uribe, Andrea Vallone, Arun Vijayvergiya, Chelsea Voss, Carroll Wainwright, Justin Jay Wang, Alvin Wang, Ben Wang, Jonathan Ward, Jason Wei, CJ Weinmann, Akila Welihinda, Peter Welinder, Jiayi Weng, Lilian Weng, Matt Wiethoff, Dave Willner, Clemens Winter, Samuel Wolrich, Hannah Wong, Lauren Workman, Sherwin Wu, Jeff Wu, Michael Wu, Kai Xiao, Tao Xu, Sarah Yoo, Kevin Yu, Qiming Yuan, Wojciech Zaremba, Rowan Zellers, Chong Zhang, Marvin Zhang, Shengjia Zhao, Tianhao Zheng, Juntang Zhuang, William Zhuk, and Barret Zoph. 2023.GPT-4 Technical Report.arXiv:2303.08774 [cs.CL]
+Owens [2023]
+Jim Owens. 2023.Video Production Handbook (7th ed.).Routledge.https://doi.org/10.4324/9781003251323
+Pandya and Holia [2023]
+Keivalya Pandya and Mehfuza Holia. 2023.Automating Customer Service using LangChain: Building custom open-source GPT Chatbot for organizations.arXiv:2310.05421 [cs.CL] https://arxiv.org/abs/2310.05421
+Park et al. [2023]
+Joon Sung Park, Joseph C. O’Brien, Carrie J. Cai, Meredith Ringel Morris, Percy Liang, and Michael S. Bernstein. 2023.Generative Agents: Interactive Simulacra of Human Behavior.arXiv:2304.03442 [cs.HC]
+Park et al. [2022]
+Joon Sung Park, Lindsay Popowski, Carrie Cai, Meredith Ringel Morris, Percy Liang, and Michael S. Bernstein. 2022.Social Simulacra: Creating Populated Prototypes for Social Computing Systems. In Proceedings of the 35th Annual ACM Symposium on User Interface Software and Technology (Bend, OR, USA) (UIST ’22). Association for Computing Machinery, New York, NY, USA, Article 74, 18 pages.https://doi.org/10.1145/3526113.3545616
+Pavel et al. [2016]
+Amy Pavel, Dan B. Goldman, Björn Hartmann, and Maneesh Agrawala. 2016.VidCrit: Video-based Asynchronous Video Review. In Proceedings of the 29th Annual Symposium on User Interface Software and Technology (Tokyo, Japan) (UIST ’16). Association for Computing Machinery, New York, NY, USA, 517–528.https://doi.org/10.1145/2984511.2984552
+Piro et al. [2024]
+Ludovica Piro, Tommaso Bianchi, Luca Alessandrelli, Andrea Chizzola, Daniela Casiraghi, Susanna Sancassani, and Nicola Gatti. 2024.MyLearningTalk: An LLM-Based Intelligent Tutoring System. In Web Engineering, Kostas Stefanidis, Kari Systä, Maristella Matera, Sebastian Heil, Haridimos Kondylakis, and Elisa Quintarelli (Eds.). Springer Nature Switzerland, Cham, 428–431.
+Radford et al. [2022]
+Alec Radford, Jong Wook Kim, Tao Xu, Greg Brockman, Christine McLeavey, and Ilya Sutskever. 2022.Robust Speech Recognition via Large-Scale Weak Supervision.arXiv:2212.04356 [eess.AS]
+Ramos and Balakrishnan [2003]
+Gonzalo Ramos and Ravin Balakrishnan. 2003.Fluid interaction techniques for the control and annotation of digital video. In Proceedings of the 16th Annual ACM Symposium on User Interface Software and Technology (Vancouver, Canada) (UIST ’03). Association for Computing Machinery, New York, NY, USA, 105–114.https://doi.org/10.1145/964696.964708
+Shao et al. [2023]
+Yunfan Shao, Linyang Li, Junqi Dai, and Xipeng Qiu. 2023.Character-LLM: A Trainable Agent for Role-Playing.arXiv:2310.10158 [cs.CL] https://arxiv.org/abs/2310.10158
+Shen et al. [2017]
+Zhiqiang Shen, Jianguo Li, Zhou Su, Minjun Li, Yurong Chen, Yu-Gang Jiang, and Xiangyang Xue. 2017.Weakly supervised dense video captioning. In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition. 1916–1924.
+Siersdorfer et al. [2010]
+Stefan Siersdorfer, Sergiu Chelaru, Wolfgang Nejdl, and Jose San Pedro. 2010.How useful are your comments? analyzing and predicting youtube comments and comment ratings. In Proceedings of the 19th International Conference on World Wide Web (Raleigh, North Carolina, USA) (WWW ’10). Association for Computing Machinery, New York, NY, USA, 891–900.https://doi.org/10.1145/1772690.1772781
+Smilevski et al. [2018]
+Marko Smilevski, Ilija Lalkovski, and Gjorgji Madjarov. 2018.Stories for Images-in-Sequence by Using Visual and Narrative Components.Springer International Publishing, 148–159.https://doi.org/10.1007/978-3-030-00825-3_13
+Song et al. [2018]
+Jingkuan Song, Yuyu Guo, Lianli Gao, Xuelong Li, Alan Hanjalic, and Heng Tao Shen. 2018.From deterministic to generative: Multimodal stochastic RNNs for video captioning.IEEE transactions on neural networks and learning systems 30, 10 (2018), 3047–3058.
+SSA [2023]
+SSA. 2023.USA Baby Name Dataset.https://www.ssa.gov/OACT/babynames/limits.html
+Stevenson and Phakiti [2014]
+Marie Stevenson and Aek Phakiti. 2014.The effects of computer-generated feedback on the quality of writing.Assessing Writing 19 (2014), 51–65.https://doi.org/10.1016/j.asw.2013.11.007Feedback in Writing: Issues and Challenges.
+Tan et al. [2011]
+Chun Chet Tan, Yu-Gang Jiang, and Chong-Wah Ngo. 2011.Towards textually describing complex video contents with audio-visual concept classifiers. In Proceedings of the 19th ACM International Conference on Multimedia (Scottsdale, Arizona, USA) (MM ’11). Association for Computing Machinery, New York, NY, USA, 655–658.https://doi.org/10.1145/2072298.2072411
+Tang et al. [2021]
+Mingkang Tang, Zhanyu Wang, Zhenhua LIU, Fengyun Rao, Dian Li, and Xiu Li. 2021.CLIP4Caption: CLIP for Video Caption. In Proceedings of the 29th ACM International Conference on Multimedia (Virtual Event, China) (MM ’21). Association for Computing Machinery, New York, NY, USA, 4858–4862.https://doi.org/10.1145/3474085.3479207
+Thelwall et al. [2012]
+Mike Thelwall, Pardeep Sud, and Farida Vis. 2012.Commenting on YouTube videos: From Guatemalan rock to el big bang.Journal of the American society for information science and technology 63, 3 (2012), 616–629.
+Thematic Analysis Inc. [2024]
+Thematic Analysis Inc. 2024.Thematic Comment Analysis.https://getthematic.com/product/comment-analyzer/Accessed: 2024-10-01.
+Tseng et al. [2024]
+Yu-Min Tseng, Yu-Chao Huang, Teng-Yun Hsiao, Wei-Lin Chen, Chao-Wei Huang, Yu Meng, and Yun-Nung Chen. 2024.Two Tales of Persona in LLMs: A Survey of Role-Playing and Personalization.arXiv:2406.01171 [cs.CL] https://arxiv.org/abs/2406.01171
+Van Daele et al. [2024]
+Tess Van Daele, Akhil Iyer, Yuning Zhang, Jalyn C Derry, Mina Huh, and Amy Pavel. 2024.Making Short-Form Videos Accessible with Hierarchical Video Summaries. In Proceedings of the 2024 CHI Conference on Human Factors in Computing Systems (Honolulu, HI, USA) (CHI ’24). Association for Computing Machinery, New York, NY, USA, Article 895, 17 pages.https://doi.org/10.1145/3613904.3642839
+VEED [2024]
+VEED. 2024.VEED.https://www.veed.io/Accessed: 2024-10-01.
+Wang et al. [2024a]
+Bryan Wang, Yuliang Li, Zhaoyang Lv, Haijun Xia, Yan Xu, and Raj Sodhi. 2024a.LAVE: LLM-Powered Agent Assistance and Language Augmentation for Video Editing.arXiv:2402.10294 [cs.HC]
+Wang et al. [2024b]
+Bryan Wang, Yuliang Li, Zhaoyang Lv, Haijun Xia, Yan Xu, and Raj Sodhi. 2024b.LAVE: LLM-Powered Agent Assistance and Language Augmentation for Video Editing.arXiv:2402.10294 [cs.HC] https://arxiv.org/abs/2402.10294
+Wang et al. [2020]
+Yaqing Wang, Quanming Yao, James T Kwok, and Lionel M Ni. 2020.Generalizing from a few examples: A survey on few-shot learning.ACM computing surveys (csur) 53, 3 (2020), 1–34.
+Wei et al. [2022]
+Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Fei Xia, Ed Chi, Quoc V Le, Denny Zhou, et al. 2022.Chain-of-thought prompting elicits reasoning in large language models.Advances in neural information processing systems 35 (2022), 24824–24837.
+Wu et al. [2020]
+Hao Wu, Gareth J. F. Jones, and Francois Pitie. 2020.Response to LiveBot: Generating Live Video Comments Based on Visual and Textual Contexts.arXiv:2006.03022 [cs.CL] https://arxiv.org/abs/2006.03022
+Yasunaga et al. [2022]
+Michihiro Yasunaga, Jure Leskovec, and Percy Liang. 2022.Linkbert: Pretraining language models with document links.arXiv preprint arXiv:2203.15827 (2022).
+Yoon et al. [2014]
+Dongwook Yoon, Nicholas Chen, François Guimbretière, and Abigail Sellen. 2014.RichReview: blending ink, speech, and gesture to support collaborative document review. In Proceedings of the 27th Annual ACM Symposium on User Interface Software and Technology (Honolulu, Hawaii, USA) (UIST ’14). Association for Computing Machinery, New York, NY, USA, 481–490.https://doi.org/10.1145/2642918.2647390
+YouTube [2023]
+YouTube. 2023.Made on YouTube.https://blog.youtube/news-and-events/made-on-youtube-2023/
+Zeng et al. [2017]
+Kuo-Hao Zeng, Tseng-Hung Chen, Ching-Yao Chuang, Yuan-Hong Liao, Juan Carlos Niebles, and Min Sun. 2017.Leveraging Video Descriptions to Learn Video Question Answering.Proceedings of the AAAI Conference on Artificial Intelligence 31, 1 (Feb. 2017).https://doi.org/10.1609/aaai.v31i1.11238
+Zeng et al. [2021]
+Zehua Zeng, Neng Gao, Cong Xue, and Chenyang Tu. 2021.PLVCG: A Pretraining Based Model for Live Video Comment Generation. In Advances in Knowledge Discovery and Data Mining, Kamal Karlapalem, Hong Cheng, Naren Ramakrishnan, R. K. Agrawal, P. Krishna Reddy, Jaideep Srivastava, and Tanmoy Chakraborty (Eds.). Springer International Publishing, Cham, 690–702.
+Zhang et al. [2024]
+Shu Zhang, Xinyi Yang, Yihao Feng, Can Qin, Chia-Chih Chen, Ning Yu, Zeyuan Chen, Huan Wang, Silvio Savarese, Stefano Ermon, Caiming Xiong, and Ran Xu. 2024.HIVE: Harnessing Human Feedback for Instructional Visual Editing. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR). 9026–9036.
+Zhang* et al. [2020]
+Tianyi Zhang*, Varsha Kishore*, Felix Wu*, Kilian Q. Weinberger, and Yoav Artzi. 2020.BERTScore: Evaluating Text Generation with BERT. In International Conference on Learning Representations.https://openreview.net/forum?id=SkeHuCVFDr
+Zhu et al. [2018]
+Yaoming Zhu, Sidi Lu, Lei Zheng, Jiaxian Guo, Weinan Zhang, Jun Wang, and Yong Yu. 2018.Texygen: A benchmarking platform for text generation models. In The 41st international ACM SIGIR conference on research & development in information retrieval. 1097–1100.
