@@ -268,7 +268,155 @@ The learned weight vector reflects user content preferences:
 **Zero Weights (w_i ≈ 0)**: This feature has little impact on user's viewing decisions
 - Example: w_SD = 0.1 indicates user is insensitive to speech density
 
-### 2.4 Cold Start Handling
+### 2.4 User Trait Quantification and Weight Mapping
+
+To support creators in defining custom agents (e.g., "a 20-year-old college student who likes excitement and has no patience"), we need to quantify user traits into measurable indicators and establish mappings from traits to video feature weights. This process ensures that agent behavior is grounded in real data rather than LLM hallucinations.
+
+#### 2.4.1 User Trait Quantification Framework
+
+We adopt a multi-dimensional trait quantification framework that integrates mature models from psychology and recommender systems research:
+
+**Big Five Personality Traits** (Costa & McCrae, 1992):
+
+1. **Openness**: Degree of openness to new experiences (0-100 scale)
+   - High openness users prefer diverse, innovative content
+   - Video feature correlation: High openness → High CC (Content Complexity) weight
+
+2. **Conscientiousness**: Degree of organization and goal orientation (0-100 scale)
+   - High conscientiousness users prefer educational, structured content
+   - Video feature correlation: High conscientiousness → High SD (Speech Density) weight
+
+3. **Extraversion**: Social activity level and energy source (0-100 scale)
+   - High extraversion users prefer social, entertaining content
+   - Video feature correlation: High extraversion → High OFM (Optical Flow Magnitude) and SD weights
+
+4. **Agreeableness**: Degree of cooperation and empathy (0-100 scale)
+   - High agreeableness users prefer warm, positive emotional content
+   - Video feature correlation: Influences content theme preferences
+
+5. **Neuroticism**: Emotional stability (0-100 scale)
+   - High neuroticism users may avoid high-stress, tense content
+   - Video feature correlation: Low neuroticism → High OFM weight
+
+**Social Traits** (based on Agent4Rec, Zhang et al., 2024):
+
+1. **Activity**: 
+   ```
+   T_activity(u) = Σ y_ui (total number of videos watched by user)
+   ```
+   - Stratification: Low activity (< 33%), Medium activity (33-66%), High activity (> 66%)
+   - Impact: High activity users watch longer, have higher tolerance
+
+2. **Conformity**:
+   ```
+   T_conformity(u) = (1/N) Σ |r_ui - R_i|²
+   ```
+   - Stratification: Low conformity (unique taste), Medium conformity, High conformity (follows mainstream)
+   - Impact: Low conformity users have higher acceptance of niche content
+
+3. **Diversity**:
+   ```
+   T_diversity(u) = |∪ G_i| (total number of video genres watched by user)
+   ```
+   - Stratification: Low diversity (focused on specific genres), Medium diversity, High diversity
+   - Impact: High diversity users have higher acceptance of different content styles
+
+**Demographic Features**:
+
+- **Age**: 18-24, 25-34, 35-44, 45-54, 55+
+  - Research basis: Young users prefer fast-paced content (high SCR and OFM weights)
+  - Middle-aged users prefer information-dense content (high SD weight)
+
+- **Occupation**: Student, educator, tech industry, creative industry, service industry, etc.
+  - Impact: Occupational background influences content theme preferences
+
+- **Interest Areas**: Technology, arts, sports, music, travel, food, etc.
+  - Impact: Directly influences content theme preferences
+
+#### 2.4.2 Trait-to-Weight Mapping Methods
+
+We propose two data-driven mapping methods to ensure weights are based on real user behavior:
+
+**Method 1: Cluster-Based Mapping from MicroLens-100K**
+
+```python
+# Step 1: Cluster MicroLens-100K users
+user_weights = [learn_weights(user) for user in microlens_users]
+kmeans = KMeans(n_clusters=10)
+clusters = kmeans.fit(user_weights)
+
+# Step 2: Annotate each cluster with traits
+cluster_traits = {
+    0: {'age': '18-24', 'activity': 'high', 'big5_extraversion': 70},
+    1: {'age': '25-34', 'activity': 'medium', 'big5_openness': 80},
+    ...
+}
+
+# Step 3: Map new users to nearest cluster
+def map_persona_to_weights(persona_traits):
+    nearest_cluster = find_nearest_cluster(persona_traits, cluster_traits)
+    weights = cluster_centers[nearest_cluster]
+    return weights
+```
+
+**Method 2: Trait Extraction and Mapping Based on PersonaChat**
+
+PersonaChat dataset (Zhang et al., 2018) contains 8,000+ persona descriptions, and Big5-Chat (arXiv:2410.16491v1) contains 100,000 Big Five-based conversations. We use these datasets to train trait extraction and mapping models:
+
+```python
+# Step 1: Extract traits from text descriptions
+def extract_persona_traits(persona_description):
+    """
+    Input: "I am a 25-year-old student who likes action movies..."
+    Output: {
+        'age': 25,
+        'occupation': 'student',
+        'big5_openness': 75,
+        'big5_extraversion': 60,
+        ...
+    }
+    """
+    traits = llm_extract_traits(persona_description)
+    return traits
+
+# Step 2: Train mapping function
+def train_trait_to_weight_mapping(microlens_data):
+    """
+    Learn trait-to-weight mapping from MicroLens-100K
+    """
+    X = []  # Trait vectors
+    y = []  # Weight vectors
+    
+    for user in microlens_data:
+        traits = extract_user_traits(user)  # Infer traits from watch history
+        weights = learn_user_weights(user)  # Learn weights from watch time
+        X.append(traits)
+        y.append(weights)
+    
+    # Use neural network or regression model
+    mapping_model = train_regression_model(X, y)
+    return mapping_model
+
+# Step 3: Generate weights for new persona
+def generate_weights_for_persona(persona_description):
+    traits = extract_persona_traits(persona_description)
+    weights = mapping_model.predict(traits)
+    return weights
+```
+
+**Theoretical Mapping Relationships** (based on psychology research and video analysis literature):
+
+| User Trait | Video Feature Weight Mapping | Research Basis |
+|-----------|------------------------------|----------------|
+| High Openness | High CC weight | Preference for diverse, innovative content |
+| High Extraversion | High OFM, SD weights | Preference for dynamic, social content |
+| High Conscientiousness | High SD weight, Low SCR weight | Preference for information-dense, structured content |
+| Young users (18-24) | High SCR, OFM weights | Preference for fast-paced, dynamic content |
+| Middle-aged users (35-50) | High SD weight | Preference for information-dense content |
+| High Activity | Longer watch time | Higher tolerance |
+| Low Conformity | High acceptance of niche content | Unique taste |
+
+#### 2.4.3 Cold-Start Handling
 
 For new users (no viewing history), use the following strategies:
 
@@ -278,12 +426,21 @@ w_new = (1/N) Σ w_u
 ```
 Use average weights of all users as initial values
 
-**Method 2: Cluster Weights**
-1. Perform K-means clustering on existing users (based on weight vectors)
-2. New users use weights from the nearest cluster center
+**Method 2: Trait-Based Cluster Weights**
+1. Extract traits from new user (age, occupation, Big Five, etc.)
+2. Find the most similar user cluster
+3. Use the average weights of that cluster
 
-**Method 3: Demographic Mapping**
-If user age, gender, and other information are available, use average weights from similar demographic groups
+**Method 3: PersonaChat-Based Weight Generation**
+1. Use LLM to extract traits from user description
+2. Generate weights through trained mapping model
+3. Gradually update weights as user interacts
+
+The advantages of this approach:
+- ✅ **Data-supported**: Weights come from real user behavior, not LLM hallucinations
+- ✅ **Traceable**: Can explain why certain traits correspond to certain weights
+- ✅ **Scalable**: Supports arbitrary combinations of user traits
+- ✅ **Verifiable**: Can experimentally evaluate mapping accuracy
 
 ## Layer 3: Retention Score Calculation
 

@@ -267,7 +267,155 @@ w_u = argmin [Σ(retention_actual - retention_predicted)² + λ||w||²]
 **零權重 (w_i ≈ 0)**: 該特徵對用戶的觀看決策影響不大
 - 例如: w_SD = 0.1 表示用戶對語音密度不敏感
 
-### 2.4 冷啟動處理
+### 2.4 用戶特質量化與權重映射
+
+為了支持創作者自定義代理人(例如「喜歡刺激、沒耐心的 20 歲大學生」),我們需要將用戶特質量化為可測量的指標,並建立從特質到影片特徵權重的映射關係。這個過程確保代理人的行為基於真實數據,而非 LLM 的幻覺。
+
+#### 2.4.1 用戶特質量化框架
+
+我們採用多維度的特質量化框架,整合心理學和推薦系統研究中的成熟模型:
+
+**Big Five 人格特質** (Costa & McCrae, 1992):
+
+1. **Openness (開放性)**: 對新體驗的開放程度 (0-100 分)
+   - 高開放性用戶偏好多樣化、創新內容
+   - 與影片特徵關聯: 高開放性 → 高 CC (內容複雜度) 權重
+
+2. **Conscientiousness (盡責性)**: 組織性和目標導向程度 (0-100 分)
+   - 高盡責性用戶偏好教育性、結構化內容
+   - 與影片特徵關聯: 高盡責性 → 高 SD (語音密度) 權重
+
+3. **Extraversion (外向性)**: 社交活躍度和能量來源 (0-100 分)
+   - 高外向性用戶偏好社交、娛樂性內容
+   - 與影片特徵關聯: 高外向性 → 高 OFM (光流強度) 和 SD 權重
+
+4. **Agreeableness (親和性)**: 合作和同理心程度 (0-100 分)
+   - 高親和性用戶偏好溫馨、正面情感內容
+   - 與影片特徵關聯: 影響內容主題偏好
+
+5. **Neuroticism (神經質)**: 情緒穩定性 (0-100 分)
+   - 高神經質用戶可能避免高壓力、緊張內容
+   - 與影片特徵關聯: 低神經質 → 高 OFM 權重
+
+**社交特質** (基於 Agent4Rec, Zhang et al., 2024):
+
+1. **Activity (活躍度)**: 
+   ```
+   T_activity(u) = Σ y_ui (用戶觀看的影片總數)
+   ```
+   - 分層: 低活躍 (< 33%), 中活躍 (33-66%), 高活躍 (> 66%)
+   - 影響: 高活躍用戶觀看時間更長,容忍度更高
+
+2. **Conformity (從眾性)**:
+   ```
+   T_conformity(u) = (1/N) Σ |r_ui - R_i|²
+   ```
+   - 分層: 低從眾 (獨特品味), 中從眾, 高從眾 (跟隨主流)
+   - 影響: 低從眾用戶對小眾內容接受度更高
+
+3. **Diversity (多樣性)**:
+   ```
+   T_diversity(u) = |∪ G_i| (用戶觀看的影片類型總數)
+   ```
+   - 分層: 低多樣性 (專注特定類型), 中多樣性, 高多樣性
+   - 影響: 高多樣性用戶對不同風格內容接受度更高
+
+**人口統計學特徵**:
+
+- **年齡**: 18-24, 25-34, 35-44, 45-54, 55+
+  - 研究依據: 年輕用戶偏好快節奏內容 (高 SCR 和 OFM 權重)
+  - 中年用戶偏好信息密集內容 (高 SD 權重)
+
+- **職業**: 學生、教育工作者、科技業、創意產業、服務業等
+  - 影響: 職業背景影響內容主題偏好
+
+- **興趣領域**: 科技、藝術、運動、音樂、旅遊、美食等
+  - 影響: 直接影響內容主題偏好
+
+#### 2.4.2 從特質到權重的映射方法
+
+我們提出兩種數據驅動的映射方法,確保權重基於真實用戶行為:
+
+**方法 1: 基於 MicroLens-100K 的聚類映射**
+
+```python
+# 步驟 1: 對 MicroLens-100K 用戶進行聚類
+user_weights = [learn_weights(user) for user in microlens_users]
+kmeans = KMeans(n_clusters=10)
+clusters = kmeans.fit(user_weights)
+
+# 步驟 2: 為每個聚類標註特質
+cluster_traits = {
+    0: {'age': '18-24', 'activity': 'high', 'big5_extraversion': 70},
+    1: {'age': '25-34', 'activity': 'medium', 'big5_openness': 80},
+    ...
+}
+
+# 步驟 3: 新用戶映射到最近的聚類
+def map_persona_to_weights(persona_traits):
+    nearest_cluster = find_nearest_cluster(persona_traits, cluster_traits)
+    weights = cluster_centers[nearest_cluster]
+    return weights
+```
+
+**方法 2: 基於 PersonaChat 的特質提取與映射**
+
+PersonaChat 數據集 (Zhang et al., 2018) 包含 8,000+ 個 persona 描述,Big5-Chat (arXiv:2410.16491v1) 包含 100,000 個基於 Big Five 的對話。我們使用這些數據集來訓練特質提取和映射模型:
+
+```python
+# 步驟 1: 從文本描述中提取特質
+def extract_persona_traits(persona_description):
+    """
+    輸入: "我是一個 25 歲的學生,喜歡動作電影..."
+    輸出: {
+        'age': 25,
+        'occupation': 'student',
+        'big5_openness': 75,
+        'big5_extraversion': 60,
+        ...
+    }
+    """
+    traits = llm_extract_traits(persona_description)
+    return traits
+
+# 步驟 2: 訓練映射函數
+def train_trait_to_weight_mapping(microlens_data):
+    """
+    從 MicroLens-100K 學習特質到權重的映射
+    """
+    X = []  # 特質向量
+    y = []  # 權重向量
+    
+    for user in microlens_data:
+        traits = extract_user_traits(user)  # 從觀看歷史推斷特質
+        weights = learn_user_weights(user)  # 從觀看時長學習權重
+        X.append(traits)
+        y.append(weights)
+    
+    # 使用神經網絡或回歸模型
+    mapping_model = train_regression_model(X, y)
+    return mapping_model
+
+# 步驟 3: 為新 persona 生成權重
+def generate_weights_for_persona(persona_description):
+    traits = extract_persona_traits(persona_description)
+    weights = mapping_model.predict(traits)
+    return weights
+```
+
+**理論映射關係** (基於心理學研究和影片分析文獻):
+
+| 用戶特質 | 影片特徵權重映射 | 研究依據 |
+|---------|----------------|---------|
+| 高 Openness | 高 CC 權重 | 偏好多樣化、創新內容 |
+| 高 Extraversion | 高 OFM, SD 權重 | 偏好動態、社交內容 |
+| 高 Conscientiousness | 高 SD 權重, 低 SCR 權重 | 偏好信息密集、結構化內容 |
+| 年輕用戶 (18-24) | 高 SCR, OFM 權重 | 偏好快節奏、動態內容 |
+| 中年用戶 (35-50) | 高 SD 權重 | 偏好信息密集內容 |
+| 高 Activity | 更長觀看時間 | 更高容忍度 |
+| 低 Conformity | 對小眾內容接受度高 | 獨特品味 |
+
+#### 2.4.3 冷啟動處理
 
 對於新用戶(無觀看歷史),使用以下策略:
 
@@ -277,12 +425,21 @@ w_new = (1/N) Σ w_u
 ```
 使用所有用戶的平均權重作為初始值
 
-**方法 2: 聚類權重**
-1. 對現有用戶進行 K-means 聚類(基於權重向量)
-2. 新用戶使用最近聚類中心的權重
+**方法 2: 基於特質的聚類權重**
+1. 提取新用戶的特質 (年齡、職業、Big Five 等)
+2. 找到特質最相似的用戶聚類
+3. 使用該聚類的平均權重
 
-**方法 3: 人口統計學映射**
-如果有用戶的年齡、性別等信息,可以使用相似人口統計學群體的平均權重
+**方法 3: 基於 PersonaChat 的權重生成**
+1. 使用 LLM 從用戶描述中提取特質
+2. 通過訓練好的映射模型生成權重
+3. 隨著用戶互動,逐步更新權重
+
+這種方法的優勢在於:
+- ✅ **有數據支持**: 權重來自真實用戶行為,不是 LLM 幻覺
+- ✅ **可追溯**: 可以解釋為什麼某個特質對應某個權重
+- ✅ **可擴展**: 支持任意用戶特質組合
+- ✅ **可驗證**: 可以通過實驗評估映射準確性
 
 ## 第三層: 留存率計算
 

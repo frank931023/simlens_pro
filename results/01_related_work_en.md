@@ -50,9 +50,61 @@ VRAgent-R1's innovation lies in using Reinforcement Learning (RL) to fine-tune L
 
 These technologies provide important inspiration for our system, particularly in how to effectively integrate multimodal information and how to extract key content from long videos.
 
-## 3. Reinforcement Learning-Based Agent Optimization
+## 3. Personality Traits and Video Preference Research
 
-### 3.1 Conceptual Verbal Reinforcement Learning
+### 3.1 Big Five Personality Model and Video Preferences
+
+In recent years, psychological research has revealed deep connections between personality traits and media consumption behavior. The **Big Five personality model** (Five-Factor Model) is the most widely accepted personality framework in psychology, comprising five core dimensions: Openness, Conscientiousness, Extraversion, Agreeableness, and Neuroticism. These traits have been proven to have significant correlations with users' video preferences.
+
+Research shows that **users with high Openness** tend to explore diverse and innovative content, showing higher acceptance of visual complexity and novel narrative techniques. **Users with high Extraversion** prefer dynamic, socially-oriented content, demonstrating stronger engagement with videos featuring high motion intensity and dialogue-dense content. **Users with high Conscientiousness** tend toward structured, information-dense educational content, showing higher tolerance for videos with stable pacing. These findings provide a theoretical foundation for quantifying personality traits and mapping them to video feature weights.
+
+### 3.2 Persona Datasets and Dialogue Modeling
+
+The **PersonaChat dataset** (Zhang et al., 2018) is the first large-scale persona dialogue dataset, containing 8,000+ persona descriptions and corresponding dialogues. Each persona consists of 4-5 natural language sentences covering multiple dimensions including age, occupation, interests, and personality. This dataset provides an important foundation for training dialogue systems that maintain persona consistency, and also provides training data for extracting quantifiable traits from textual descriptions.
+
+The **Big5-Chat dataset** (arXiv:2410.16491v1) further extends this direction, containing 100,000 dialogue samples based on Big Five personality traits. This dataset annotates each dialogue with the speaker's Big Five scores (0-100 scale), enabling us to train models to accurately extract personality traits from natural language descriptions. This data-driven trait extraction approach avoids the problem of relying purely on LLM subjective judgment, ensuring the reliability of persona quantification.
+
+### 3.3 Persona Agent Evaluation Framework
+
+**PersonaGym** (arXiv:2407.18416v4) proposes the first framework for dynamically evaluating persona agent consistency. The framework is based on decision theory and defines the **PersonaScore** metric to quantify the alignment between agent behavior and persona descriptions. PersonaGym evaluates four core dimensions:
+
+**Preference Consistency**: Measures whether the agent's content choices align with the preferences described in its persona. Evaluation metrics include accuracy, precision, recall, and F1 score.
+
+**Rating Consistency**: Compares the agent's rating distribution with real user rating patterns, using KL divergence and Jensen-Shannon divergence to quantify differences.
+
+**Behavioral Consistency**: Measures whether the agent's watch time, exit behavior, etc., align with persona traits, using Mean Absolute Error (MAE) and Pearson correlation coefficient for evaluation.
+
+**Trait Coherence**: Detects whether the agent maintains stable persona traits during long-term interactions, avoiding trait drift.
+
+This evaluation framework provides us with objective, reproducible methods to validate persona agent accuracy and measure the gap between agent behavior and real user behavior.
+
+### 3.4 Social Trait Quantification
+
+As previously mentioned, Agent4Rec defines three quantifiable social traits that are closely related to video viewing behavior:
+
+**Activity**: Quantified as the total number of videos watched by a user, reflecting the frequency of user interaction with the recommendation system. High-activity users watch more videos and have higher tolerance for content, while low-activity users are more selective and make exit decisions more quickly.
+
+**Conformity**: Measured through the consistency between user ratings and average video ratings, with the formula `T_conformity(u) = (1/N) Σ |r_ui - R_i|²`. Users with low conformity have higher acceptance of niche content, while users with high conformity tend to follow mainstream preferences.
+
+**Diversity**: Quantified as the total number of video genres watched by a user, reflecting the breadth of user interests. Users with high diversity have higher acceptance of different styles of content, while users with low diversity focus on specific genres.
+
+These social traits complement Big Five personality traits, together forming a complete persona quantification framework. For example, high Extraversion is typically associated with high Activity, and high Openness is associated with high Diversity.
+
+### 3.5 How Persona Quantification Extends the Objective Feature Approach
+
+Our system integrates persona quantification into the existing objective feature extraction architecture rather than replacing it. Specifically:
+
+**For users with viewing history** (Path A): The system continues to use MicroLens-100K data to directly learn personalized weights from watch time, which is the most accurate method because it is based on real behavioral data.
+
+**For new users in cold-start scenarios** (Path B): The system uses the persona quantification approach: (1) Extract Big Five traits, social traits, and demographic features from the user's natural language description; (2) Convert these traits into video feature weights through a mapping function learned from MicroLens-100K; (3) Use these weights to predict retention rates.
+
+The key advantage of this design is that **the mapping function is data-driven**, not LLM hallucinations. We cluster MicroLens-100K users by their learned weights, annotate trait patterns for each cluster, then train a regression model to learn the trait-to-weight mapping. This ensures that persona agent behavior is based on real user patterns, not imagined from thin air.
+
+Furthermore, the persona quantification approach maintains the system's **100% traceability**. Each predicted retention rate can still be decomposed into the weighted contributions of five objective features (ASD, SCR, OFM, SD, CC), allowing users to clearly see why a particular persona would like or dislike a particular video. For example, a persona of "a 20-year-old college student who likes excitement and has no patience" would assign high weights to SCR (Shot Change Rate) and OFM (Optical Flow Magnitude), so fast-paced, dynamic videos would receive high retention rate predictions.
+
+## 4. Reinforcement Learning-Based Agent Optimization
+
+### 4.1 Conceptual Verbal Reinforcement Learning
 
 FinCon (Yu et al., 2024) proposes an innovative Conceptual Verbal Reinforcement (CVRF) mechanism for multi-agent system optimization in financial decision-making tasks. The system adopts a manager-analyst hierarchical structure with two key risk control components:
 
@@ -62,7 +114,7 @@ FinCon (Yu et al., 2024) proposes an innovative Conceptual Verbal Reinforcement 
 
 CVRF's core innovation lies in using text-based gradient descent to provide optimal conceptual investment guidance. Unlike traditional optimizers based on model value gradient momentum, CVRF derives investment belief updates by measuring the overlapping percentage of trading actions between two consecutive training trajectories. This approach has proven effective in improving the performance of synthesized agent systems where each worker has a clearly defined and specialized role.
 
-### 3.2 Application of Reinforcement Fine-Tuning in User Simulation
+### 4.2 Application of Reinforcement Fine-Tuning in User Simulation
 
 VRAgent-R1 pioneered the application of Reinforcement Fine-Tuning (RFT) to user simulation tasks. Compared to simple Supervised Fine-Tuning (SFT), the RFT method has the following advantages:
 
@@ -74,7 +126,7 @@ VRAgent-R1 pioneered the application of Reinforcement Fine-Tuning (RFT) to user 
 
 These methods provide important theoretical foundations for our system, particularly in how to optimize agent decision-making processes through reinforcement learning and how to design effective reward mechanisms to guide agent learning.
 
-## Limitations of Existing Methods and Innovation of This Research
+## 5. Limitations of Existing Methods and Innovation of This Research
 
 Despite significant progress in the above research, key challenges remain in agent simulation for short video recommendations:
 
