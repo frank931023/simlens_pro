@@ -5,8 +5,8 @@ flowchart TB
     subgraph Frontend["前端層 Frontend"]
         A1[Web應用<br/>React + TypeScript]
         A2[創作者儀表板<br/>視頻分析與優化建議]
-        A3[用戶推薦介面<br/>個性化視頻推薦]
-        A4[Persona管理介面<br/>代理人創建與測試]
+        A3[觀眾模擬介面<br/>模擬觀眾反應預測]
+        A4[Persona管理介面<br/>虛擬觀眾創建與測試]
     end
 
     subgraph APIGateway["API 網關層"]
@@ -20,7 +20,7 @@ flowchart TB
         C1[視頻處理服務<br/>Video Processing]
         C2[特徵提取服務<br/>Feature Extraction]
         C3[權重學習服務<br/>Weight Learning]
-        C4[推薦服務<br/>Recommendation]
+        C4[觀眾預測服務<br/>Audience Prediction]
         C5[Persona服務<br/>Persona Management]
     end
 
@@ -45,7 +45,7 @@ flowchart TB
     end
 
     subgraph Database["數據庫層 Database"]
-        G1[(PostgreSQL<br/>用戶/視頻元數據)]
+        G1[(PostgreSQL<br/>創作者/視頻元數據)]
         G2[(Redis<br/>特徵緩存)]
         G3[(MongoDB<br/>觀看歷史)]
         G4[(Elasticsearch<br/>視頻搜索)]
@@ -161,13 +161,13 @@ flowchart TB
 ### 1. 前端層 (Frontend)
 - **Web 應用**：React + TypeScript 構建的單頁應用
 - **創作者儀表板**：視頻上傳、特徵分析、優化建議
-- **用戶推薦介面**：個性化視頻推薦、留存率預測
-- **Persona 管理介面**：創建和測試代理人
+- **觀眾模擬介面**：模擬觀眾反應、留存率預測
+- **Persona 管理介面**：創建和測試虛擬觀眾
 
 ### 2. API 網關層 (API Gateway)
 - **Nginx**：負載均衡、SSL 終止、靜態文件服務
 - **API Gateway**：FastAPI (Python) 或 Express (Node.js)
-- **認證服務**：JWT + OAuth2 用戶認證
+- **認證服務**：JWT + OAuth2 創作者認證
 - **限流與監控**：防止 API 濫用
 
 ### 3. 後端服務層 (Backend Services)
@@ -183,19 +183,19 @@ flowchart TB
 - 批量處理支持
 
 #### 權重學習服務 (Weight Learning)
-- 從用戶觀看歷史學習權重
+- 從觀眾觀看歷史學習權重
 - Persona 特質到權重映射
 - 權重更新和版本管理
 
-#### 推薦服務 (Recommendation)
+#### 觀眾預測服務 (Audience Prediction)
 - 留存率預測
-- 視頻排序和推薦
+- 觀眾反應模擬
 - A/B 測試支持
 
 #### Persona 服務 (Persona Management)
 - Persona 創建和管理
 - 特質提取和驗證
-- 代理人行為模擬
+- 虛擬觀眾行為模擬
 
 ### 4. 模型服務層 (Model Serving)
 
@@ -320,13 +320,13 @@ def generate_counterfactual(video_features, target_retention=0.8):
 #### 視覺化儀表板 (Visualization Dashboard)
 - **留存率曲線**：時序分析圖表
 - **特徵雷達圖**：5個特徵的分數分佈
-- **權重熱力圖**：用戶群體的權重分佈
+- **權重熱力圖**：觀眾群體的權重分佈
 - **對比分析**：多個視頻的特徵對比
 
 ### 6. 數據庫層 (Database)
 
 #### PostgreSQL
-- 用戶信息、視頻元數據
+- 創作者信息、視頻元數據
 - 權重向量存儲
 - 關係型數據
 
@@ -337,7 +337,7 @@ def generate_counterfactual(video_features, target_retention=0.8):
 
 #### MongoDB
 - 觀看歷史記錄
-- 用戶行為日誌
+- 觀眾行為日誌
 - 非結構化數據
 
 #### Elasticsearch
@@ -378,7 +378,7 @@ def generate_counterfactual(video_features, target_retention=0.8):
 #### Sentry
 - 錯誤追蹤
 - 性能監控
-- 用戶反饋
+- 創作者反饋
 
 ### 9. Docker 容器化 (Containerization)
 
@@ -646,7 +646,7 @@ kubectl get services
 
 ### 2. 插件化設計
 - 新特徵提取器可插拔
-- 新推薦算法可擴展
+- 新預測算法可擴展
 - 新評估指標可添加
 
 ### 3. 多租戶支持

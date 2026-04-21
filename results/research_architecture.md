@@ -3,7 +3,7 @@
 ```mermaid
 flowchart TB
     subgraph DataCollection["數據收集階段"]
-        A1[MicroLens-100K<br/>100K用戶, 19K視頻<br/>719K交互記錄]
+        A1[MicroLens-100K<br/>100K觀眾, 19K視頻<br/>719K交互記錄]
         A2[QVHighlights<br/>10K YouTube視頻<br/>精彩片段標註]
         A3[TVSum<br/>50個視頻<br/>重要性分數]
         A4[PersonaChat<br/>8K+ persona描述]
@@ -39,7 +39,7 @@ flowchart TB
         D2 --> E8[Diversity分層]
     end
 
-    subgraph WeightLearning["第二層：用戶權重學習"]
+    subgraph WeightLearning["第二層：觀眾權重學習"]
         F1[線性回歸<br/>從觀看歷史學習]
         F2[神經網絡映射<br/>Persona特質→權重]
         F3[聚類映射<br/>K-Means聚類]
@@ -76,8 +76,8 @@ flowchart TB
 
     subgraph Results["研究成果"]
         J1[100%可追溯性<br/>特徵貢獻分解]
-        J2[個性化推薦<br/>基於用戶權重]
-        J3[冷啟動支持<br/>Persona代理人]
+        J2[個性化觀眾預測<br/>基於觀眾權重]
+        J3[冷啟動支持<br/>Persona虛擬觀眾]
         J4[創作者優化建議<br/>特徵改進指導]
     end
 
@@ -158,8 +158,8 @@ flowchart TB
 - 所有特徵標準化為1-10分制
 - 完全自動化，無需人工標註
 
-#### 第二層：用戶權重學習
-- **方法1**：從 MicroLens-100K 用戶觀看歷史學習權重
+#### 第二層：觀眾權重學習
+- **方法1**：從 MicroLens-100K 觀眾觀看歷史學習權重
 - **方法2**：從 Persona 特質映射到權重（支持冷啟動）
 - **方法3**：聚類映射（低成本替代方案）
 
@@ -174,14 +174,14 @@ flowchart TB
 
 ### 階段四：研究成果
 - 100% 可追溯性
-- 個性化推薦
+- 個性化觀眾預測
 - 冷啟動支持
 - 創作者優化建議
 
 ## 參數使用順序
 
 1. **視頻特徵** [ASD, SCR, OFM, SD, CC] → 標準化為 1-10 分
-2. **用戶權重** [w_ASD, w_SCR, w_OFM, w_SD, w_CC] → 從觀看歷史學習
+2. **觀眾權重** [w_ASD, w_SCR, w_OFM, w_SD, w_CC] → 從觀看歷史學習
 3. **Persona 特質** [Big Five, Activity, Conformity, Diversity] → 映射到權重
 4. **留存率分數** Retention_Score → Sigmoid 歸一化
 5. **評估指標** MAE, Pearson r, KL Divergence, Agreement Rate

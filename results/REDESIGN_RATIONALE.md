@@ -21,8 +21,8 @@
 ### 核心洞察
 
 從文獻研究中發現：
-- **Watch Time（觀看時長）** 是視頻推薦系統中最重要的指標 [arXiv:2508.11086, arXiv:2412.20211]
-- **Retention Rate（留存率）** 直接反映用戶參與度
+- **Watch Time（觀看時長）** 是視頻分析中最重要的指標 [arXiv:2508.11086, arXiv:2412.20211]
+- **Retention Rate（留存率）** 直接反映觀眾參與度
 - **Shot Duration（鏡頭時長）** 和 **Editing Pace（剪輯節奏）** 是可測量的客觀特徵 [ResearchGate: Evolution of pace in popular movies]
 
 ### 第一層：客觀影片分析器（重新設計）
@@ -69,12 +69,12 @@
 
 ### 第二層：個性化特質映射矩陣（重新設計）
 
-#### 使用真實的用戶行為數據
+#### 使用真實的觀眾行為數據
 
 不再憑空想像權重，改用**從數據集中學習**的方法：
 
 **數據來源：MicroLens-100K**
-- 100,000 用戶
+- 100,000 觀眾
 - 19,738 視頻
 - 719,405 次交互
 - **關鍵**：包含真實的觀看時長數據
@@ -82,10 +82,10 @@
 **權重學習方法**：
 
 ```python
-# 從用戶歷史行為中學習權重
+# 從觀眾歷史行為中學習權重
 def learn_persona_weights(user_history):
     """
-    輸入：用戶的觀看歷史 [(video_id, watch_time, video_features), ...]
+    輸入：觀眾的觀看歷史 [(video_id, watch_time, video_features), ...]
     輸出：權重向量 [w_ASD, w_SCR, w_OFM, w_SD, w_CC]
     """
     # 使用線性回歸學習權重
@@ -97,8 +97,8 @@ def learn_persona_weights(user_history):
 ```
 
 **優勢**：
-✅ **有數據支持**：權重來自真實用戶行為
-✅ **可追溯**：可以解釋為什麼某個用戶偏好某種特徵
+✅ **有數據支持**：權重來自真實觀眾行為
+✅ **可追溯**：可以解釋為什麼某個觀眾偏好某種特徵
 ✅ **不需要 RAG**：直接從數據學習，不需要構建行為準則數據庫
 
 ### 第三層：留存率預測（保持不變）
@@ -117,7 +117,7 @@ Retention_Score = Σ(Video_Feature_i × User_Weight_i)
 
 **1. MicroLens-100K**（主要數據集）
 - **用途**：訓練和驗證整個系統
-- **包含**：視頻、用戶交互、觀看時長
+- **包含**：視頻、觀眾交互、觀看時長
 - **優勢**：真實世界數據，不需要額外標註
 
 **2. QVHighlights**（輔助驗證）
@@ -176,12 +176,12 @@ for user, video, watch_time in MicroLens:
 
 **可行性**：✅ 完全自動化，不需要人工標註
 
-### 實驗二：用戶權重學習驗證
+### 實驗二：觀眾權重學習驗證
 
-**目的**：驗證從用戶歷史學習的權重是否有效
+**目的**：驗證從觀眾歷史學習的權重是否有效
 
 **方法**：
-1. 將用戶歷史分為訓練集（80%）和測試集（20%）
+1. 將觀眾歷史分為訓練集（80%）和測試集（20%）
 2. 從訓練集學習權重
 3. 在測試集上預測留存率
 
@@ -207,7 +207,7 @@ for user, video, watch_time in MicroLens:
 **基線方法**：
 1. **Random**：隨機預測
 2. **Average**：使用平均觀看時長
-3. **Collaborative Filtering**：基於用戶-視頻交互矩陣
+3. **Collaborative Filtering**：基於觀眾-視頻交互矩陣
 4. **VRAgent-R1**：使用 MLLM 生成語義描述
 
 **評估指標**：
@@ -249,7 +249,7 @@ for user, video, watch_time in MicroLens:
 
 ### Phase 2：在 MicroLens 上驗證（2 週）
 - 提取所有視頻的特徵
-- 學習用戶權重
+- 學習觀眾權重
 - 評估預測性能
 
 ### Phase 3：在 QVHighlights/TVSum 上驗證（1 週）

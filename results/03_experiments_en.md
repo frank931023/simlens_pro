@@ -2,15 +2,15 @@
 
 ## Experimental Overview
 
-To validate the effectiveness and feasibility of the SimLens system, we designed four experiments to evaluate each component of the system and its overall performance. These experiments aim to answer the following key research questions:
+To validate the effectiveness and feasibility of the SimLens system for predicting audience retention, we designed four experiments to evaluate each component of the system and its overall performance. These experiments aim to answer the following key research questions:
 
 **RQ1**: Are objective video features correlated with video attractiveness?
 
-**RQ2**: Can weights learned from user behavior data effectively predict retention rates?
+**RQ2**: Can weights learned from audience behavior data effectively predict retention rates?
 
 **RQ3**: Is each feature in the three-layer architecture necessary?
 
-**RQ4**: How does the SimLens system perform compared to baseline methods?
+**RQ4**: How does the SimLens system perform compared to baseline prediction methods?
 
 ## Datasets
 
@@ -18,7 +18,7 @@ To validate the effectiveness and feasibility of the SimLens system, we designed
 
 We use the following datasets for our experiments:
 
-**MicroLens-100K** [Zhang et al., 2023]: A real-world video recommendation dataset containing 100,000 users, 19,738 short videos, and 719,405 interactions. The average video duration is 161 seconds. This is our primary dataset, used for training weights and validating system performance.
+**MicroLens-100K** [Zhang et al., 2023]: A real-world video dataset containing 100,000 users, 19,738 short videos, and 719,405 interactions. The average video duration is 161 seconds. This is our primary dataset, used for training weights and validating system performance.
 
 **QVHighlights** [Lei et al., 2021]: Contains 10,148 YouTube videos, each with manually annotated highlight segments. We use this dataset to validate the relationship between objective features and video attractiveness.
 
@@ -116,7 +116,7 @@ This experiment validates the effectiveness of Layer 1 (Objective Video Feature 
 
 ### Purpose
 
-Validate whether weights learned from user historical behavior data can effectively predict retention rates.
+Validate whether weights learned from audience historical behavior data can effectively predict retention rates.
 
 ### Experimental Setup
 
@@ -158,11 +158,11 @@ Validate whether weights learned from user historical behavior data can effectiv
 
 ### Analysis
 
-This experiment validates the effectiveness of Layer 2 (User Weight Learning). The results demonstrate:
-1. Weights learned from user historical behavior can effectively predict retention rates (MAE = 0.18 < 0.2)
+This experiment validates the effectiveness of Layer 2 (Audience Weight Learning). The results demonstrate:
+1. Weights learned from audience historical behavior can effectively predict retention rates (MAE = 0.18 < 0.2)
 2. Predicted retention rates have moderate correlation with actual retention rates (r = 0.52 > 0.4)
 3. Active users have more accurate predictions due to more data for learning
-4. Weight distribution shows diversity in user preferences, with different users emphasizing different features
+4. Weight distribution shows diversity in audience preferences, with different users emphasizing different features
 
 
 ## Experiment 3: Ablation Study
@@ -218,14 +218,14 @@ This experiment demonstrates:
 
 ### Purpose
 
-Compare the SimLens system with existing recommendation methods to evaluate its relative performance.
+Compare the SimLens system with existing prediction methods to evaluate its relative performance.
 
 ### Baseline Methods
 
 1. **Random**: Randomly predict retention rate, serving as the lowest baseline
 2. **Average**: Use average watch time of all videos as prediction
 3. **Collaborative Filtering**: Matrix factorization method based on user-video interaction matrix
-4. **VRAgent-R1** [Zhang et al., 2024]: Uses multimodal large language models (MLLM) to generate video semantic descriptions, then performs recommendation
+4. **VRAgent-R1** [Zhang et al., 2024]: Uses multimodal large language models (MLLM) to generate video semantic descriptions, then performs audience behavior prediction
 
 ### Experimental Setup
 
@@ -254,7 +254,7 @@ Using the MicroLens-100K dataset:
 **SimLens vs Collaborative Filtering**:
 - MAE improvement: 0.22 ??0.18 (-18%)
 - Pearson r improvement: 0.38 ??0.52 (+37%)
-- Advantage: SimLens provides traceability, can explain why a video is recommended
+- Advantage: SimLens provides traceability, can explain why a video would appeal to specific audiences
 
 **SimLens vs VRAgent-R1**:
 - MAE improvement: 0.20 ??0.18 (-10%)
@@ -274,9 +274,9 @@ This experiment demonstrates:
 
 ### Purpose
 
-Demonstrate the traceability and practical value of the SimLens system through specific cases.
+Demonstrate the traceability and practical value of the SimLens system for creators through specific cases.
 
-### Case: User Preference Analysis
+### Case: Audience Preference Analysis
 
 **User A**: A real user selected from MicroLens-100K
 
@@ -319,19 +319,19 @@ Demonstrate the traceability and practical value of the SimLens system through s
 
 ### Analysis
 
-This case demonstrates the core advantages of the SimLens system:
+This case demonstrates the core advantages of the SimLens system for creators:
 
 1. **100% Traceable**: Every retention rate score can be decomposed into specific feature contributions
    - Video 1's high retention rate mainly comes from OFM (16.4) and SCR (11.5)
    - Video 2's low retention rate is because both OFM (4.5) and SCR (4.5) are low
 
-2. **Personalized Insights**: The weight vector reflects the user's true preferences
+2. **Personalized Insights**: The weight vector reflects the audience member's true preferences
    - User A prefers dynamic videos, as evidenced by high OFM and SCR weights
-   - Different users will have different weights, reflecting audience diversity
+   - Different audience members will have different weights, reflecting audience diversity
 
 3. **Actionable Suggestions**: Creators can improve content based on analysis results
    - To attract audiences like User A, increase visual dynamics and shot transitions
-   - If the video is educational, may need to target different user groups
+   - If the video is educational, may need to target different audience segments
 
 ## Experiment 5: Persona Trait Extraction Validation
 
@@ -483,12 +483,12 @@ Based on Agent4Rec [arXiv:2310.10108v3] method:
 **Evaluation Method 2: Rating Distribution Alignment**
 
 1. Have agents rate 100 random videos (1-5 stars)
-2. Compare agent rating distribution with real user rating distribution
+2. Compare agent rating distribution with real audience rating distribution
 3. Calculate KL divergence (lower is better)
 
 **Evaluation Method 3: Social Trait Alignment**
 
-1. Have agents interact with recommendation system (watch, rate, exit)
+1. Have agents interact with video content (watch, rate, exit)
 2. Measure agents' actual exhibited social traits:
    - Activity: Total number of videos watched
    - Conformity: Consistency of ratings with average ratings
@@ -533,7 +533,7 @@ Based on Agent4Rec [arXiv:2310.10108v3] method:
 
 This experiment validates agent behavior consistency:
 1. **Taste Alignment**: At 1:1 ratio, accuracy 67% and recall 75% meet expectations (based on Agent4Rec baseline)
-2. **Rating Distribution**: Average KL divergence 0.09 < 0.1, indicating agent rating distribution aligns with real users
+2. **Rating Distribution**: Average KL divergence 0.09 < 0.1, indicating agent rating distribution aligns with real audiences
 3. **Social Trait**: Average error 16% < 20%, indicating agents' exhibited social traits align with expectations
 4. High activity agents have best rating distribution alignment (KL = 0.08) due to more interaction data
 5. At imbalanced ratio (1:9), recall still maintains 82%, showing agents can effectively identify preferred videos
@@ -543,7 +543,7 @@ This experiment validates agent behavior consistency:
 
 ### Purpose
 
-Evaluate the gap between persona agents and real users, validating whether agents can substitute real users for recommendation system evaluation.
+Evaluate the gap between persona agents and real audience members, validating whether agents can substitute real users for audience behavior prediction evaluation.
 
 ### Experimental Setup
 
@@ -624,13 +624,13 @@ This experiment evaluates the gap between agents and real world:
 1. **Holdout Validation**: Average MAE = 0.19 < 0.2, Pearson r = 0.46 > 0.4, achieving expected accuracy
 2. **High Activity Users**: Agent predictions most accurate (MAE = 0.16, r = 0.52) due to more data for trait inference
 3. **Low Activity Users**: Agent predictions less accurate (MAE = 0.24, r = 0.38) due to unreliable trait inference
-4. **A/B Test Agreement**: 84% agreement rate > 80% target, indicating agents can reliably substitute real users for recommendation system evaluation
+4. **A/B Test Agreement**: 84% agreement rate > 80% target, indicating agents can reliably substitute real users for audience behavior prediction evaluation
 5. **Inconsistent Cases**: 8 inconsistent scenarios (16%) mainly involve social interaction and attention limitations, factors not modeled in current system
 6. **Effect Size Difference**: Average only 2-4%, indicating even when conclusions agree, preference strength between agents and real users is very close
 
 **Practical Value**:
 - Agents can be used for rapid A/B testing at much lower cost than real user experiments
-- For most recommendation system evaluation scenarios (84%), agent conclusions align with real users
+- For most audience prediction evaluation scenarios (84%), agent conclusions align with real users
 - For scenarios involving social interaction, real user validation still needed
 
 
@@ -642,7 +642,7 @@ Through these eight experiments, we comprehensively validated the effectiveness 
 
 1. **Experiment 1** demonstrated the correlation between objective features and video attractiveness, with all features passing significance tests (p < 0.05, r > 0.3)
 
-2. **Experiment 2** demonstrated that weights learned from user behavior data can effectively predict retention rates (MAE = 0.18 < 0.2, r = 0.52 > 0.4)
+2. **Experiment 2** demonstrated that weights learned from audience behavior data can effectively predict retention rates (MAE = 0.18 < 0.2, r = 0.52 > 0.4)
 
 3. **Experiment 3** demonstrated that all five features contribute to system performance, with removing any feature leading to performance degradation
 
@@ -664,16 +664,16 @@ These experimental results indicate:
 
 1. **Objective Feature Extraction**: SimLens can effectively quantify video content using fully automated feature extraction without human annotation
 
-2. **Personalized Weight Learning**: Weights learned from user behavior data can accurately predict retention rates and outperform baseline methods
+2. **Personalized Weight Learning**: Weights learned from audience behavior data can accurately predict retention rates and outperform baseline methods
 
 3. **Persona Quantification**: Can accurately extract persona traits from text descriptions and map them to video feature weights
 
-4. **Agent Accuracy**: Persona agents' behavior highly aligns with real users, can be used for recommendation system evaluation
+4. **Agent Accuracy**: Persona agents' behavior highly aligns with real audience members, can be used for audience behavior prediction evaluation
 
 5. **100% Traceability**: Every prediction can be decomposed into feature contributions, providing complete interpretability
 
 6. **Experimental Feasibility**: All experiments use existing datasets (MicroLens-100K, QVHighlights, TVSum, PersonaChat, Big5-Chat), highly feasible
 
-The SimLens system not only provides accurate retention rate predictions but also supports cold-start scenarios through the persona quantification framework, enabling recommendation systems to provide personalized services for new users while maintaining complete traceability and interpretability.
+The SimLens system not only provides accurate retention rate predictions but also supports cold-start scenarios through the persona quantification framework, enabling creators to predict audience reactions for new content while maintaining complete traceability and interpretability.
 
 

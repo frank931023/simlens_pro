@@ -2,7 +2,7 @@
 
 ## System Architecture Overview
 
-We propose the SimLens system with a three-layer architecture designed to achieve traceable and interpretable short video recommendation simulation. The core concept of the entire system is to separate "objective video features" and "user behavior weights," establishing a clear mathematical relationship between them. Unlike traditional black-box neural network approaches, SimLens guarantees 100% traceability, allowing every prediction result to be decomposed into specific feature contributions. The system architecture is shown in Figure 1.
+We propose the SimLens system with a three-layer architecture designed to achieve traceable and interpretable audience retention prediction for short videos. The core concept of the entire system is to separate "objective video features" and "audience behavior weights," establishing a clear mathematical relationship between them. Unlike traditional black-box neural network approaches, SimLens guarantees 100% traceability, allowing every prediction result to be decomposed into specific feature contributions. The system architecture is shown in Figure 1.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -21,10 +21,10 @@ We propose the SimLens system with a three-layer architecture designed to achiev
 │  │   - CC: Content Complexity                        │      │
 │  └───────────────────────────────────────────────────┘      │
 │                          ↓                                    │
-│  Layer 2: User Weight Learning                               │
+│  Layer 2: Audience Weight Learning                           │
 │  ┌───────────────────────────────────────────────────┐      │
 │  │ Input: MicroLens-100K User Watch History          │      │
-│  │ Process: Linear Regression for User-Specific      │      │
+│  │ Process: Linear Regression for Audience-Specific  │      │
 │  │          Weight Learning                          │      │
 │  │ Output: Feature Weight Vector                     │      │
 │  │   - ASD Weight: w₁                                │      │
@@ -210,9 +210,9 @@ All feature extraction tools are open-source and publicly available, ensuring re
 - Memory: 16GB or more
 - Processing Speed: Approximately 1-2 minutes per video (depending on video length and hardware configuration)
 
-## Layer 2: User Weight Learning
+## Layer 2: Audience Weight Learning
 
-Layer 2 is responsible for learning user-specific feature weights from real user behavior data. Unlike traditional rule-based or expert knowledge approaches, we directly learn preference patterns from users' viewing history.
+Layer 2 is responsible for learning audience-specific feature weights from real user behavior data. Unlike traditional rule-based or expert knowledge approaches, we directly learn preference patterns from users' viewing history.
 
 ### 2.1 Data Source: MicroLens-100K
 
@@ -229,7 +229,7 @@ Layer 2 is responsible for learning user-specific feature weights from real user
 
 ### 2.2 Weight Learning Method
 
-**Problem Definition**: For user u, learn weight vector w_u = [w₁, w₂, w₃, w₄, w₅] such that predicted retention rate is closest to actual retention rate.
+**Problem Definition**: For audience member u, learn weight vector w_u = [w₁, w₂, w₃, w₄, w₅] such that predicted retention rate is closest to actual retention rate.
 
 **Mathematical Model**: Linear Regression
 ```
@@ -237,7 +237,7 @@ retention_predicted = w₁×ASD + w₂×SCR + w₃×OFM + w₄×SD + w₅×CC + 
 ```
 
 **Training Process**:
-1. Split user's viewing history into training set (80%) and validation set (20%)
+1. Split viewing history into training set (80%) and validation set (20%)
 2. Solve for weights using least squares method:
 ```
 w_u = argmin Σ(retention_actual - retention_predicted)²
@@ -257,75 +257,75 @@ Where λ = 0.01
 
 ### 2.3 Weight Interpretation
 
-The learned weight vector reflects user content preferences:
+The learned weight vector reflects audience content preferences:
 
-**Positive Weights (w_i > 0)**: The higher this feature value, the more likely the user will watch for longer
-- Example: w_SCR = 0.8 indicates user prefers fast-paced videos with high change rates
+**Positive Weights (w_i > 0)**: The higher this feature value, the more likely the audience will watch for longer
+- Example: w_SCR = 0.8 indicates preference for fast-paced videos with high change rates
 
-**Negative Weights (w_i < 0)**: The higher this feature value, the more likely the user will leave early
-- Example: w_ASD = -0.5 indicates user dislikes slow-paced videos with long shots
+**Negative Weights (w_i < 0)**: The higher this feature value, the more likely the audience will leave early
+- Example: w_ASD = -0.5 indicates dislike for slow-paced videos with long shots
 
-**Zero Weights (w_i ≈ 0)**: This feature has little impact on user's viewing decisions
-- Example: w_SD = 0.1 indicates user is insensitive to speech density
+**Zero Weights (w_i ≈ 0)**: This feature has little impact on viewing decisions
+- Example: w_SD = 0.1 indicates insensitivity to speech density
 
-### 2.4 User Trait Quantification and Weight Mapping
+### 2.4 Audience Trait Quantification and Weight Mapping
 
-To support creators in defining custom agents (e.g., "a 20-year-old college student who likes excitement and has no patience"), we need to quantify user traits into measurable indicators and establish mappings from traits to video feature weights. This process ensures that agent behavior is grounded in real data rather than LLM hallucinations.
+To support creators in defining custom simulated audience members (e.g., "a 20-year-old college student who likes excitement and has no patience"), we need to quantify audience traits into measurable indicators and establish mappings from traits to video feature weights. This process ensures that simulated audience behavior is grounded in real data rather than LLM hallucinations.
 
-#### 2.4.1 User Trait Quantification Framework
+#### 2.4.1 Audience Trait Quantification Framework
 
-We adopt a multi-dimensional trait quantification framework that integrates mature models from psychology and recommender systems research:
+We adopt a multi-dimensional trait quantification framework that integrates mature models from psychology and audience behavior research:
 
 **Big Five Personality Traits** (Costa & McCrae, 1992):
 
 1. **Openness**: Degree of openness to new experiences (0-100 scale)
-   - High openness users prefer diverse, innovative content
+   - High openness audiences prefer diverse, innovative content
    - Video feature correlation: High openness → High CC (Content Complexity) weight
 
 2. **Conscientiousness**: Degree of organization and goal orientation (0-100 scale)
-   - High conscientiousness users prefer educational, structured content
+   - High conscientiousness audiences prefer educational, structured content
    - Video feature correlation: High conscientiousness → High SD (Speech Density) weight
 
 3. **Extraversion**: Social activity level and energy source (0-100 scale)
-   - High extraversion users prefer social, entertaining content
+   - High extraversion audiences prefer social, entertaining content
    - Video feature correlation: High extraversion → High OFM (Optical Flow Magnitude) and SD weights
 
 4. **Agreeableness**: Degree of cooperation and empathy (0-100 scale)
-   - High agreeableness users prefer warm, positive emotional content
+   - High agreeableness audiences prefer warm, positive emotional content
    - Video feature correlation: Influences content theme preferences
 
 5. **Neuroticism**: Emotional stability (0-100 scale)
-   - High neuroticism users may avoid high-stress, tense content
+   - High neuroticism audiences may avoid high-stress, tense content
    - Video feature correlation: Low neuroticism → High OFM weight
 
-**Social Traits** (based on Agent4Rec, Zhang et al., 2024):
+**Social Traits** (adapted from Agent4Rec's user behavior simulation techniques, Zhang et al., 2024):
 
 1. **Activity**: 
    ```
    T_activity(u) = Σ y_ui (total number of videos watched by user)
    ```
    - Stratification: Low activity (< 33%), Medium activity (33-66%), High activity (> 66%)
-   - Impact: High activity users watch longer, have higher tolerance
+   - Impact: High activity audiences watch longer, have higher tolerance
 
 2. **Conformity**:
    ```
    T_conformity(u) = (1/N) Σ |r_ui - R_i|²
    ```
    - Stratification: Low conformity (unique taste), Medium conformity, High conformity (follows mainstream)
-   - Impact: Low conformity users have higher acceptance of niche content
+   - Impact: Low conformity audiences have higher acceptance of niche content
 
 3. **Diversity**:
    ```
    T_diversity(u) = |∪ G_i| (total number of video genres watched by user)
    ```
    - Stratification: Low diversity (focused on specific genres), Medium diversity, High diversity
-   - Impact: High diversity users have higher acceptance of different content styles
+   - Impact: High diversity audiences have higher acceptance of different content styles
 
 **Demographic Features**:
 
 - **Age**: 18-24, 25-34, 35-44, 45-54, 55+
-  - Research basis: Young users prefer fast-paced content (high SCR and OFM weights)
-  - Middle-aged users prefer information-dense content (high SD weight)
+  - Research basis: Young audiences prefer fast-paced content (high SCR and OFM weights)
+  - Middle-aged audiences prefer information-dense content (high SD weight)
 
 - **Occupation**: Student, educator, tech industry, creative industry, service industry, etc.
   - Impact: Occupational background influences content theme preferences
@@ -335,7 +335,7 @@ We adopt a multi-dimensional trait quantification framework that integrates matu
 
 #### 2.4.2 Trait-to-Weight Mapping Methods
 
-We propose two data-driven mapping methods to ensure weights are based on real user behavior:
+We propose two data-driven mapping methods to ensure weights are based on real audience behavior:
 
 **Method 1: Cluster-Based Mapping from MicroLens-100K**
 
@@ -352,7 +352,7 @@ cluster_traits = {
     ...
 }
 
-# Step 3: Map new users to nearest cluster
+# Step 3: Map simulated audience members to nearest cluster
 def map_persona_to_weights(persona_traits):
     nearest_cluster = find_nearest_cluster(persona_traits, cluster_traits)
     weights = cluster_centers[nearest_cluster]
@@ -397,7 +397,7 @@ def train_trait_to_weight_mapping(microlens_data):
     mapping_model = train_regression_model(X, y)
     return mapping_model
 
-# Step 3: Generate weights for new persona
+# Step 3: Generate weights for simulated audience
 def generate_weights_for_persona(persona_description):
     traits = extract_persona_traits(persona_description)
     weights = mapping_model.predict(traits)
@@ -406,19 +406,19 @@ def generate_weights_for_persona(persona_description):
 
 **Theoretical Mapping Relationships** (based on psychology research and video analysis literature):
 
-| User Trait | Video Feature Weight Mapping | Research Basis |
+| Audience Trait | Video Feature Weight Mapping | Research Basis |
 |-----------|------------------------------|----------------|
 | High Openness | High CC weight | Preference for diverse, innovative content |
 | High Extraversion | High OFM, SD weights | Preference for dynamic, social content |
 | High Conscientiousness | High SD weight, Low SCR weight | Preference for information-dense, structured content |
-| Young users (18-24) | High SCR, OFM weights | Preference for fast-paced, dynamic content |
-| Middle-aged users (35-50) | High SD weight | Preference for information-dense content |
+| Young audiences (18-24) | High SCR, OFM weights | Preference for fast-paced, dynamic content |
+| Middle-aged audiences (35-50) | High SD weight | Preference for information-dense content |
 | High Activity | Longer watch time | Higher tolerance |
 | Low Conformity | High acceptance of niche content | Unique taste |
 
 #### 2.4.3 Cold-Start Handling
 
-For new users (no viewing history), use the following strategies:
+For simulated audience members with no viewing history, use the following strategies:
 
 **Method 1: Global Average Weights**
 ```
@@ -427,28 +427,28 @@ w_new = (1/N) Σ w_u
 Use average weights of all users as initial values
 
 **Method 2: Trait-Based Cluster Weights**
-1. Extract traits from new user (age, occupation, Big Five, etc.)
+1. Extract traits from simulated audience member (age, occupation, Big Five, etc.)
 2. Find the most similar user cluster
 3. Use the average weights of that cluster
 
 **Method 3: PersonaChat-Based Weight Generation**
-1. Use LLM to extract traits from user description
+1. Use LLM to extract traits from audience description
 2. Generate weights through trained mapping model
-3. Gradually update weights as user interacts
+3. Gradually update weights as more data becomes available
 
 The advantages of this approach:
-- ✅ **Data-supported**: Weights come from real user behavior, not LLM hallucinations
+- ✅ **Data-supported**: Weights come from real audience behavior, not LLM hallucinations
 - ✅ **Traceable**: Can explain why certain traits correspond to certain weights
-- ✅ **Scalable**: Supports arbitrary combinations of user traits
+- ✅ **Scalable**: Supports arbitrary combinations of audience traits
 - ✅ **Verifiable**: Can experimentally evaluate mapping accuracy
 
 ## Layer 3: Retention Score Calculation
 
-Layer 3 combines video features and user weights to calculate the final retention rate prediction score.
+Layer 3 combines video features and audience weights to calculate the final retention rate prediction score.
 
 ### 3.1 Retention Score Calculation Formula
 
-For user u watching video v, the retention rate score is calculated as follows:
+For audience member u watching video v, the retention rate score is calculated as follows:
 
 ```
 Retention_Score = Σ(Feature_i × Weight_i) + b
@@ -457,7 +457,7 @@ Retention_Score = Σ(Feature_i × Weight_i) + b
 
 Where:
 - Feature_i: Normalized score (1-10) of video v on the i-th feature
-- Weight_i: Weight of user u on the i-th feature
+- Weight_i: Weight of audience member u on the i-th feature
 - b: Bias term
 
 ### 3.2 Score Normalization
@@ -470,9 +470,9 @@ Retention_Score_normalized = sigmoid(Retention_Score_raw)
 ```
 
 **Score Interpretation**:
-- 0.0-0.3: Low retention, user may skip quickly
-- 0.3-0.7: Medium retention, user will watch but may not finish
-- 0.7-1.0: High retention, user is very likely to watch completely
+- 0.0-0.3: Low retention, audience may skip quickly
+- 0.3-0.7: Medium retention, audience will watch but may not finish
+- 0.7-1.0: High retention, audience is very likely to watch completely
 
 ### 3.3 Temporal Analysis
 
@@ -484,7 +484,7 @@ Retention_Curve = [Score_t1, Score_t2, ..., Score_tn]
 
 This enables us to:
 1. Identify peaks and valleys in the video
-2. Predict when users are likely to leave
+2. Predict when audience members are likely to leave
 3. Provide optimization suggestions for content creators
 
 ### 3.4 Traceability Advantage
@@ -493,7 +493,7 @@ The core advantage of SimLens is 100% traceability. Every retention rate predict
 
 **Example Decomposition**:
 ```
-Video A for User B Retention Rate Prediction: 0.75 (High Retention)
+Video A for Audience Member B Retention Rate Prediction: 0.75 (High Retention)
 
 Detailed Calculation:
 - ASD Contribution: 8 × 0.3 = 2.4
@@ -504,7 +504,7 @@ Detailed Calculation:
 - Bias Term: 1.0
 Total: 15.7 → sigmoid(15.7) ≈ 0.75
 
-Explanation: User B highly values shot change rate (weight 0.8), and Video A has 
+Explanation: Audience Member B highly values shot change rate (weight 0.8), and Video A has 
 a very high change rate (9 points), thus predicting high retention. The negative 
 contribution from speech density is offset by positive contributions from other features.
 ```
@@ -516,76 +516,76 @@ contribution from speech density is offset by positive contributions from other 
 | Interpretability | Fully traceable | Black box |
 | Feature Contribution | Clearly quantified | Cannot decompose |
 | Debugging Capability | Can identify problem features | Difficult to debug |
-| User Trust | High (explainable) | Low (opaque) |
+| Creator Trust | High (explainable) | Low (opaque) |
 | Computational Cost | Low | High |
 
 ### 3.5 Practical Application Scenarios
 
 **Scenario 1: Content Creator Optimization**
 After a creator uploads a video, the system analyzes:
-- "Your video has low retention (0.3) at 15-25 seconds, mainly due to excessively low shot change rate (3 points)"
+- "Your video has low predicted retention (0.3) at 15-25 seconds, mainly due to excessively low shot change rate (3 points)"
 - "Suggestion: Increase scene transitions or add dynamic elements in this segment"
 
-**Scenario 2: Personalized Recommendation**
-When the recommendation system recommends videos to users:
-- Calculate user's predicted retention rate for candidate videos
-- Prioritize recommending high retention rate (> 0.7) videos
-- Avoid recommending low retention rate (< 0.3) videos
+**Scenario 2: Pre-Release Audience Testing**
+Before publishing a video, creators can simulate different audience segments:
+- Calculate predicted retention rate for various audience demographics
+- Identify which audience segments will respond best to the content
+- Optimize content based on target audience preferences
 
-**Scenario 3: User Behavior Analysis**
-Platform analyzes user groups:
-- "Young users (18-25 years) have average SCR weight of 0.9, preferring fast-paced content"
-- "Middle-aged users (35-50 years) have average SD weight of 0.7, preferring information-dense content"
+**Scenario 3: Audience Behavior Analysis**
+Creators analyze simulated audience groups:
+- "Young audiences (18-25 years) have average SCR weight of 0.9, preferring fast-paced content"
+- "Middle-aged audiences (35-50 years) have average SD weight of 0.7, preferring information-dense content"
 
 ## Overall System Workflow
 
 ### 4.1 Offline Phase
 
 **Step 1: Video Feature Extraction**
-- Extract five features for all videos in the video library
+- Extract five features for videos in the training dataset
 - Store feature vectors in database
 - Time Complexity: O(N_videos)
 
-**Step 2: User Weight Learning**
-- Learn weights from viewing history for each user
+**Step 2: Audience Weight Learning**
+- Learn weights from viewing history for each user in the dataset
 - Store weight vectors in database
 - Time Complexity: O(N_users × N_history)
 
 ### 4.2 Online Phase
 
-**Step 1: Retrieve Candidate Videos**
-- Obtain candidate set using collaborative filtering or content filtering
-- Candidate Set Size: 100-1000 videos
+**Step 1: Video Upload**
+- Creator uploads a video for analysis
+- System extracts features from the uploaded video
 
 **Step 2: Retention Rate Prediction**
-- Calculate retention rate score for each candidate video
-- Time Complexity: O(N_candidates) - very fast
+- Calculate retention rate score for simulated audience members
+- Time Complexity: O(N_audience_members) - very fast
 
-**Step 3: Ranking and Recommendation**
-- Sort by retention rate score in descending order
-- Return Top-K videos (K = 10-50)
+**Step 3: Analysis and Recommendations**
+- Generate retention curve and identify weak segments
+- Provide actionable optimization suggestions to creators
 
 ### 4.3 Performance Optimization
 
-**Feature Caching**: Pre-compute and cache feature vectors for all videos
+**Feature Caching**: Pre-compute and cache feature vectors for analyzed videos
 
-**Weight Updates**: Periodically (daily or weekly) update user weights, rather than real-time updates
+**Weight Updates**: Periodically update audience weight models based on new behavioral data
 
-**Batch Computation**: Use matrix operations to batch calculate retention rates for multiple videos:
+**Batch Computation**: Use matrix operations to batch calculate retention rates for multiple audience segments:
 ```
 Scores = Features_matrix × Weights_vector
 ```
 
-**Distributed Computing**: Feature extraction can be parallelized to support large-scale video libraries
+**Distributed Computing**: Feature extraction can be parallelized to support large-scale video analysis
 
 ## Summary
 
 SimLens' three-layer architecture achieves the following goals:
 
 1. **Objectivity**: Layer 1 uses fully automated feature extraction without subjective evaluation
-2. **Data-Driven**: Layer 2 learns weights from real user behavior data rather than relying on assumptions
+2. **Data-Driven**: Layer 2 learns weights from real audience behavior data rather than relying on assumptions
 3. **Traceability**: Layer 3 ensures every prediction can be fully decomposed and explained
-4. **Scalability**: The entire system can efficiently handle large-scale video and user data
-5. **Practicality**: Provides actionable insights for content creators and recommendation systems
+4. **Scalability**: The entire system can efficiently handle large-scale video analysis and audience simulation
+5. **Practicality**: Provides actionable insights for content creators to optimize their videos before publication
 
-This design makes SimLens a scientifically rigorous and practically feasible video recommendation simulation system.
+This design makes SimLens a scientifically rigorous and practically feasible audience simulation system for video retention prediction.
